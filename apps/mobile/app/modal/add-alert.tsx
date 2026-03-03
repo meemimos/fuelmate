@@ -32,7 +32,7 @@ export default function AddAlertModal() {
     try {
       await addAlert({
         fuel_type: fuelType,
-        threshold_cents: thresholdValue,
+        threshold_cents: Math.round(thresholdValue * 100),
         station_name: stationName,
         is_active: true,
       });

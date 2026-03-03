@@ -20,6 +20,7 @@ export default function Root({ children }: { children: React.ReactNode }) {
 
         {/* Using raw CSS styles as an escape-hatch to ensure the background color never flickers in dark-mode. */}
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />
+        
         {/* Add any additional <head> elements that you want globally available on web... */}
       </head>
       <body>{children}</body>
@@ -30,9 +31,19 @@ export default function Root({ children }: { children: React.ReactNode }) {
 const responsiveBackground = `
 body {
   background-color: #0c0c0e;
+  margin: 0;
+  padding: 0;
 }
 @media (prefers-color-scheme: dark) {
   body {
     background-color: #0c0c0e;
   }
-}`;
+}
+#root {
+  width: 100%;
+  height: 100%;
+}
+* {
+  box-sizing: border-box;
+}
+`;

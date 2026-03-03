@@ -48,8 +48,8 @@ export default function LogFillModal() {
       await addRecord({
         station_name: stationName,
         fuel_type: fuelType,
-        locked_price_cents: numericLocked,
-        pump_price_cents: numericPump,
+        locked_price_cents: Math.round(numericLocked * 100),
+        pump_price_cents: Math.round(numericPump * 100),
         litres: numericLitres,
         filled_at: new Date().toISOString().slice(0, 10),
       });

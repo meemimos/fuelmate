@@ -16,10 +16,12 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { toastConfig } from '@/components/ToastConfig';
 
+// NativeWind v4 CSS interop is handled automatically via Babel preset
+
 export { ErrorBoundary } from 'expo-router';
 
 export const unstable_settings = {
-  initialRouteName: '(tabs)',
+  initialRouteName: 'index',
 };
 
 if (Platform.OS !== 'web') {
@@ -27,7 +29,48 @@ if (Platform.OS !== 'web') {
 }
 
 function WebAppShell() {
+  const store = require('@fuelmate/store');
+  const useAuthStore = store.useAuthStore;
   const colorScheme = useColorScheme();
+  const router = useRouter();
+  const segments = useSegments();
+  const session = useAuthStore((state: any) => state.session);
+  const loading = useAuthStore((state: any) => state.loading);
+
+  useEffect(() => {
+    // Initialize auth store for web
+    useAuthStore.getState().initialize();
+  }, []);
+
+  useEffect(() => {
+    if (loading) return;
+    const inAuthGroup = segments[0] === '(auth)';
+    // For web, allow access to index page, otherwise redirect based on auth
+    if (segments.length === 0 || segments[0] === 'index') return;
+    if (!session && !inAuthGroup) {
+      router.replace('/(auth)/welcome');
+    }
+    if (session && inAuthGroup) {
+      router.replace('/(tabs)/prices');
+    }
+  }, [loading, router, segments, session]);
+
+  // Ensure NativeWind styles are injected on mount for web
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      // Force style injection by accessing a styled component
+      const testEl = document.createElement('div');
+      testEl.className = 'r-flex-1';
+      testEl.style.display = 'none';
+      document.body.appendChild(testEl);
+      setTimeout(() => {
+        if (testEl.parentNode) {
+          document.body.removeChild(testEl);
+        }
+      }, 0);
+    }
+  }, []);
+
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -98,10 +141,13 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded && Platform.OS !== 'web') {
-      const store = require('@fuelmate/store');
-      store.useAuthStore.getState().initialize();
-      SplashScreen.hideAsync();
+    if (loaded) {
+      if (Platform.OS !== 'web') {
+        const store = require('@fuelmate/store');
+        store.useAuthStore.getState().initialize();
+        SplashScreen.hideAsync();
+      }
+      // For web, NativeWind v4 handles CSS injection automatically via react-native-css-interop
     }
   }, [loaded]);
 

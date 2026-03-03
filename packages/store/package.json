@@ -1,0 +1,13 @@
+{
+  "name": "@fuelmate/store",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
+    "expo-secure-store": "^55.0.8",
+    "react-native-toast-message": "^2.3.3",
+    "zustand": "^5.0.11"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "expo": {
+    "name": "mobile",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "mobile",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0c0c0e"
+    },
+    "ios": {
+      "bundleIdentifier": "com.fuelmate.app",
+      "supportsTablet": true,
+      "usesLocationServices": true,
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "FuelMate uses notifications to alert you when prices hit your target.",
+        "NSLocationWhenInUseUsageDescription": "FuelMate uses your location to show nearby stations.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "FuelMate uses your location to show nearby stations."
+      },
+      "entitlements": {
+        "aps-environment": "production"
+      }
+    },
+    "android": {
+      "package": "com.fuelmate.app",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#0c0c0e",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "notification": {
+        "icon": "./assets/images/icon.png",
+        "color": "#ff6b00"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "notification": {
+      "icon": "./assets/images/icon.png",
+      "color": "#ff6b00"
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000000"
+      }
+    }
+  }
+}

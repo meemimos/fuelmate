@@ -1,18 +1,26 @@
 import { create } from 'zustand';
 
-import type { Database } from '../lib/database.types';
-import { scheduleLocalNotification } from '../lib/notifications';
-import { supabase } from '../lib/supabase';
-import { showError, showInfo, showSuccess } from '../lib/toast';
+import { scheduleLocalNotification, showToast, supabase } from '@fuelmate/lib';
+import type { Database } from '@fuelmate/lib';
 
 type PriceAlert = Database['public']['Tables']['price_alerts']['Row'];
 type PriceAlertInsert = Database['public']['Tables']['price_alerts']['Insert'];
+
+type FuelKey = 'unleaded' | 'premium' | 'diesel' | 'e10';
+
+type LegacyAlertInput = Omit<PriceAlertInsert, 'id' | 'user_id' | 'created_at'>;
+
+type QuickAlertInput = {
+  fuelType: FuelKey;
+  threshold: number;
+  station: string;
+};
 
 type AlertsState = {
   alerts: PriceAlert[];
   loading: boolean;
   fetchAlerts: () => Promise<void>;
-  addAlert: (input: Omit<PriceAlertInsert, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
+  addAlert: (input: LegacyAlertInput | QuickAlertInput) => Promise<void>;
   toggleAlert: (id: string, isActive: boolean) => Promise<void>;
   deleteAlert: (id: string) => Promise<void>;
   checkAlerts: (stations: Station[]) => Promise<void>;
@@ -21,6 +29,21 @@ type AlertsState = {
 type Station = {
   name: string;
   fuels: Record<string, number>;
+};
+
+const normalizeFuelType = (value: string): PriceAlertInsert['fuel_type'] => {
+  switch (value.toLowerCase()) {
+    case 'unleaded':
+      return 'Unleaded';
+    case 'premium':
+      return 'Premium';
+    case 'diesel':
+      return 'Diesel';
+    case 'e10':
+      return 'E10';
+    default:
+      return value as PriceAlertInsert['fuel_type'];
+  }
 };
 
 const getUserId = async () => {
@@ -48,7 +71,10 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
       }
       set({ alerts: data ?? [] });
     } catch (error) {
-      showError('Unable to load alerts', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to load alerts: ${error.message}` : 'Unable to load alerts',
+        'error'
+      );
       throw error;
     } finally {
       set({ loading: false });
@@ -57,14 +83,23 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
   addAlert: async (input) => {
     try {
       const userId = await getUserId();
-      const payload: PriceAlertInsert = {
-        user_id: userId,
-        fuel_type: input.fuel_type,
-        threshold_cents: input.threshold_cents,
-        station_name: input.station_name ?? null,
-        is_active: input.is_active ?? true,
-        last_triggered_at: null,
-      };
+      const payload: PriceAlertInsert = 'fuelType' in input
+        ? {
+            user_id: userId,
+            fuel_type: normalizeFuelType(input.fuelType),
+            threshold_cents: Number(input.threshold.toFixed(1)),
+            station_name: input.station,
+            is_active: true,
+            last_triggered_at: null,
+          }
+        : {
+            user_id: userId,
+            fuel_type: input.fuel_type,
+            threshold_cents: input.threshold_cents,
+            station_name: input.station_name ?? null,
+            is_active: input.is_active ?? true,
+            last_triggered_at: null,
+          };
       const { data, error } = await supabase
         .from('price_alerts')
         .insert(payload)
@@ -74,9 +109,12 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
         throw error;
       }
       set({ alerts: [data, ...get().alerts] });
-      showSuccess('Alert created', 'We will notify you when it hits your target.');
+      showToast('Alert created', 'success');
     } catch (error) {
-      showError('Unable to create alert', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to create alert: ${error.message}` : 'Unable to create alert',
+        'error'
+      );
       throw error;
     }
   },
@@ -94,9 +132,12 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
       set({
         alerts: get().alerts.map((alert) => (alert.id === id ? data : alert)),
       });
-      showSuccess('Alert updated', isActive ? 'Alert re-enabled.' : 'Alert paused.');
+      showToast(isActive ? 'Alert re-enabled' : 'Alert paused', 'success');
     } catch (error) {
-      showError('Unable to update alert', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to update alert: ${error.message}` : 'Unable to update alert',
+        'error'
+      );
       throw error;
     }
   },
@@ -107,9 +148,12 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
         throw error;
       }
       set({ alerts: get().alerts.filter((alert) => alert.id !== id) });
-      showSuccess('Alert deleted');
+      showToast('Alert deleted', 'success');
     } catch (error) {
-      showError('Unable to delete alert', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to delete alert: ${error.message}` : 'Unable to delete alert',
+        'error'
+      );
       throw error;
     }
   },
@@ -132,7 +176,7 @@ export const useAlertsStore = create<AlertsState>((set, get) => ({
         `${alert.fuel_type} hit ${alert.threshold_cents.toFixed(1)}¢/L`,
         `${match.name} is at ${match.fuels[alert.fuel_type].toFixed(1)}¢/L`
       );
-      showInfo('Price alert triggered', `${match.name} just hit your target.`);
+      showToast(`Price alert triggered: ${match.name} just hit your target.`, 'info');
 
       // TODO: Replace polling with Supabase Edge Function + pg_cron for server-side price monitoring
       const timestamp = new Date().toISOString();

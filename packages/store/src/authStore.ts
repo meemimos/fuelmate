@@ -3,8 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-import { showError, showSuccess } from '../lib/toast';
+import { showToast, supabase } from '@fuelmate/lib';
 
 const SecureStore =
   Platform.OS !== 'web'
@@ -56,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
           if ('mock' in input && input.mock) {
             const devUser = { id: 'dev-user-123' } as User;
             set({ user: devUser, session: null, loading: false });
-            showSuccess('Signed in (dev)');
+            showToast('Signed in (dev)', 'success');
             return;
           }
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -67,9 +66,12 @@ export const useAuthStore = create<AuthState>()(
             throw error;
           }
           set({ session: data.session, user: data.session?.user ?? null });
-          showSuccess('Signed in');
+          showToast('Signed in', 'success');
         } catch (error) {
-          showError('Sign in failed', error instanceof Error ? error.message : 'Try again.');
+          showToast(
+            error instanceof Error ? `Sign in failed: ${error.message}` : 'Sign in failed',
+            'error'
+          );
           throw error;
         }
       },
@@ -77,9 +79,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           await supabase.auth.signOut();
           set({ session: null, user: null });
-          showSuccess('Signed out');
+          showToast('Signed out', 'success');
         } catch (error) {
-          showError('Sign out failed', error instanceof Error ? error.message : 'Try again.');
+          showToast(
+            error instanceof Error ? `Sign out failed: ${error.message}` : 'Sign out failed',
+            'error'
+          );
           throw error;
         }
       },

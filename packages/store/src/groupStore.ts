@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 
-import type { Database } from '../lib/database.types';
-import { supabase } from '../lib/supabase';
-import { showError, showInfo, showSuccess } from '../lib/toast';
+import { showToast, supabase } from '@fuelmate/lib';
+import type { Database } from '@fuelmate/lib';
 
 type GroupRow = Database['public']['Tables']['groups']['Row'];
 type MemberRow = Database['public']['Tables']['group_members']['Row'];
@@ -197,7 +196,10 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
       set({ group: mapGroup(group), members: mappedMembers, activeLocks: [] });
     } catch (error) {
-      showError('Unable to load group', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to load group: ${error.message}` : 'Unable to load group',
+        'error'
+      );
       throw error;
     } finally {
       set({ loading: false });
@@ -216,16 +218,16 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         isOwner: false,
       };
       set({ members: [...get().members, nextMember] });
-      showSuccess('Invite sent', 'We will email the invite link shortly.');
+      showToast('Invite sent', 'success');
       return;
     }
-    showInfo('Invite queued', 'Server invite flow coming next.');
+    showToast('Invite queued', 'info');
     void email;
   },
   removeMember: async (memberId) => {
     if (__DEV__) {
       set({ members: get().members.filter((member) => member.id !== memberId) });
-      showSuccess('Member removed');
+      showToast('Member removed', 'success');
       return;
     }
     try {
@@ -234,9 +236,14 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         throw error;
       }
       set({ members: get().members.filter((member) => member.id !== memberId) });
-      showSuccess('Member removed');
+      showToast('Member removed', 'success');
     } catch (error) {
-      showError('Unable to remove member', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error
+          ? `Unable to remove member: ${error.message}`
+          : 'Unable to remove member',
+        'error'
+      );
       throw error;
     }
   },

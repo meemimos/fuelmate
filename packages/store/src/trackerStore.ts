@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 
-import type { Database } from '../lib/database.types';
-import { supabase } from '../lib/supabase';
-import { showError, showSuccess } from '../lib/toast';
+import { showToast, supabase } from '@fuelmate/lib';
+import type { Database } from '@fuelmate/lib';
 
 type FillRecord = Database['public']['Tables']['fill_records']['Row'];
 type FillRecordInsert = Database['public']['Tables']['fill_records']['Insert'];
@@ -10,6 +9,9 @@ type FillRecordInsert = Database['public']['Tables']['fill_records']['Insert'];
 type TrackerState = {
   records: FillRecord[];
   loading: boolean;
+  totalSaved: number;
+  monthTotal: number;
+  avgPerFill: number;
   fetchRecords: () => Promise<void>;
   addRecord: (input: Omit<FillRecordInsert, 'id' | 'user_id' | 'created_at'>) => Promise<void>;
 };
@@ -25,9 +27,26 @@ const getUserId = async () => {
 const calcSaved = (locked: number, pump: number, litres: number) =>
   Math.max(0, Math.min(((pump - locked) / 100) * litres, 0.25 * litres));
 
+const getMonthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`;
+
+const computeStats = (records: FillRecord[]) => {
+  const totalSaved = records.reduce((sum, record) => sum + (record.saved_dollars ?? 0), 0);
+  const currentKey = getMonthKey(new Date());
+  const monthTotal = records.reduce((sum, record) => {
+    const recordKey = getMonthKey(new Date(record.filled_at));
+    return recordKey === currentKey ? sum + (record.saved_dollars ?? 0) : sum;
+  }, 0);
+  const avgPerFill = records.length ? totalSaved / records.length : 0;
+
+  return { totalSaved, monthTotal, avgPerFill };
+};
+
 export const useTrackerStore = create<TrackerState>((set, get) => ({
   records: [],
   loading: false,
+  totalSaved: 0,
+  monthTotal: 0,
+  avgPerFill: 0,
   fetchRecords: async () => {
     set({ loading: true });
     try {
@@ -40,9 +59,13 @@ export const useTrackerStore = create<TrackerState>((set, get) => ({
       if (error) {
         throw error;
       }
-      set({ records: data ?? [] });
+      const nextRecords = data ?? [];
+      set({ records: nextRecords, ...computeStats(nextRecords) });
     } catch (error) {
-      showError('Unable to load records', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to load records: ${error.message}` : 'Unable to load records',
+        'error'
+      );
       throw error;
     } finally {
       set({ loading: false });
@@ -79,10 +102,14 @@ export const useTrackerStore = create<TrackerState>((set, get) => ({
           input.litres
         ),
       };
-      set({ records: [record, ...get().records] });
-      showSuccess('Fill-up saved');
+      const nextRecords = [record, ...get().records];
+      set({ records: nextRecords, ...computeStats(nextRecords) });
+      showToast('Fill-up saved', 'success');
     } catch (error) {
-      showError('Unable to save record', error instanceof Error ? error.message : 'Try again.');
+      showToast(
+        error instanceof Error ? `Unable to save record: ${error.message}` : 'Unable to save record',
+        'error'
+      );
       throw error;
     }
   },

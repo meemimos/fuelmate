@@ -78,6 +78,24 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loading) return;
+    // Guard against router not being initialized (web SSR/hydration)
+    if (Platform.OS === 'web') {
+      // On web, wait for client-side hydration before navigating
+      if (typeof window === 'undefined') return;
+      // Use requestAnimationFrame to ensure DOM and router are ready
+      const rafId = requestAnimationFrame(() => {
+        try {
+          if (!user) router.replace('/(auth)/welcome');
+          else router.replace('/(tabs)/prices');
+        } catch (error) {
+          // Router state might not be initialized yet
+          console.warn('Router navigation deferred:', error);
+        }
+      });
+      return () => cancelAnimationFrame(rafId);
+    }
+    
+    // Native: navigate immediately
     if (!user) router.replace('/(auth)/welcome');
     else router.replace('/(tabs)/prices');
   }, [user, loading, router]);

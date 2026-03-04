@@ -1,226 +1,199 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, Text, View } from 'react-native';
+import { memo, useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 
-import { Badge, Card, LedDisplay, MoneyText, ScreenHeader } from '@fuelmate/ui';
-import type { FuelType, Station } from '@/data/mockStations';
-import { MOCK_STATIONS } from '@/data/mockStations';
-import { SkeletonBlock } from '@/components/Skeleton';
+import { Badge, Card, LedDisplay, MoneyText, OfflineBanner, ScreenHeader, Skeleton } from '@fuelmate/ui';
+import { MOCK_STATIONS } from '@fuelmate/lib/mockData';
 import { TabErrorBoundary } from '@/components/TabErrorBoundary';
 
-const FUEL_TYPES: FuelType[] = ['Unleaded', 'Premium', 'Diesel', 'E10'];
-const STATION_ROW_HEIGHT = 128;
+type FuelKey = 'unleaded' | 'premium' | 'diesel' | 'e10';
 
-const formatPrice = (value: number) => value.toFixed(1);
-
-const getMinMax = (stations: Station[], fuelType: FuelType) => {
-  const values = stations.map((station) => station.fuels[fuelType]);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  return { min, max };
+type PriceStation = {
+  id: string;
+  name: string;
+  address: string;
+  distance: number;
+  distanceKm?: number;
+  unleaded: number;
+  premium: number;
+  diesel: number;
+  e10: number;
 };
 
-const calcSaveFor50L = (high: number, low: number) =>
-  Math.max(0, ((high - low) / 100) * 50);
+const FUEL_OPTIONS: Array<{ key: FuelKey; label: 'Unleaded' | 'Premium' | 'Diesel' | 'E10' }> = [
+  { key: 'unleaded', label: 'Unleaded' },
+  { key: 'premium', label: 'Premium' },
+  { key: 'diesel', label: 'Diesel' },
+  { key: 'e10', label: 'E10' },
+];
+
+const STATION_ROW_HEIGHT = 128;
+const formatPrice = (value: number) => value.toFixed(1);
 
 const PricesScreen = memo(function PricesScreen() {
   const router = useRouter();
-  const [fuelType, setFuelType] = useState<FuelType>('Unleaded');
-  const [loading, setLoading] = useState(true);
+  const [fuelType, setFuelType] = useState<FuelKey>('unleaded');
+  const [refreshing, setRefreshing] = useState(false);
+  const loading = false;
 
-  const { min, max } = useMemo(() => getMinMax(MOCK_STATIONS, fuelType), [fuelType]);
+  const stations = useMemo<PriceStation[]>(
+    () =>
+      MOCK_STATIONS.map((station) => ({
+        id: station.id,
+        name: station.name,
+        address: station.address,
+        distance: station.distanceKm,
+        unleaded: station.fuels.Unleaded,
+        premium: station.fuels.Premium,
+        diesel: station.fuels.Diesel,
+        e10: station.fuels.E10,
+      })),
+    []
+  );
 
-  const sortedStations = useMemo(() => {
-    return [...MOCK_STATIONS].sort(
-      (a, b) => a.fuels[fuelType] - b.fuels[fuelType]
-    );
-  }, [fuelType]);
+  const sorted = useMemo(() => [...stations].sort((a, b) => a[fuelType] - b[fuelType]), [fuelType, stations]);
+  const minPrice = sorted[0]?.[fuelType] ?? 0;
+  const maxPrice = sorted[sorted.length - 1]?.[fuelType] ?? 0;
+  const savingsOn50L = Number((((maxPrice - minPrice) / 100) * 50).toFixed(2));
 
-  const bestStation = sortedStations[0];
-  const highestStation = sortedStations[sortedStations.length - 1];
-  const save50L = calcSaveFor50L(max, min);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 500);
+  };
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const handleFuelSelect = useCallback((type: FuelType) => {
+  const handleFuelSelect = useCallback(async (type: FuelKey) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFuelType(type);
   }, []);
 
   const handleStationPress = useCallback(
-    (stationId: string) => {
-      router.push({
-        pathname: '/modal/station',
-        params: { stationId, fuelType },
-      });
+    async (station: PriceStation) => {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      router.push({ pathname: '/modal/station', params: { station: JSON.stringify(station), fuelType } });
     },
     [fuelType, router]
   );
 
-  if (loading) {
-    return (
-      <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 28 }}>
-        <View className="px-6 pt-6">
-          <ScreenHeader title="Price Finder" badge="..." />
-          <Card variant="fuel" className="mt-6">
-            <SkeletonBlock height={12} width={160} />
-            <SkeletonBlock height={64} className="mt-4" />
-          </Card>
-        </View>
-      </ScrollView>
-    );
-  }
-
   return (
-    <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 28 }}>
+    <ScrollView
+      className="flex-1 bg-bg"
+      contentContainerStyle={{ paddingBottom: 28 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e5a0" />}
+    >
+      <OfflineBanner />
       <View className="px-6 pt-6">
         <ScreenHeader title="Price Finder" badge="Live · Sydney" />
 
-        <Card variant="fuel" className="mt-6">
-          <Text className="font-mono text-[10px] uppercase tracking-[1.5px] text-fuel">
-            Best local price
-          </Text>
-          <View className="mt-4 flex-row items-center justify-between gap-4">
+        {loading ? (
+          <View className="py-2">
+            {[0, 1, 2].map((i) => (
+              <Card key={`p-s-${i}`} className="mb-2">
+                <Skeleton height={14} />
+                <Skeleton height={10} className="mt-2" width="70%" />
+              </Card>
+            ))}
+          </View>
+        ) : null}
+
+        <Card variant="fuel" className="mb-3">
+          <Text className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">BEST LOCAL PRICE</Text>
+          <View className="flex-row items-center justify-between gap-4">
             <View className="flex-1">
-              <View className="flex-row items-end gap-2">
-                <LedDisplay value={formatPrice(min)} height={72} color="#ff6b00" />
-                <Text className="mb-2 font-mono text-xs text-muted">¢/L</Text>
+              <View className="flex-row items-end">
+                <LedDisplay value={formatPrice(minPrice)} height={72} color="#ff6b00" />
+                <Text className="ml-1 mb-2 self-end font-mono text-xs text-muted-foreground">¢/L</Text>
               </View>
-              <Text className="mt-2 text-xs text-muted">{bestStation?.name}</Text>
             </View>
             <View className="items-end">
-              <Text className="font-mono text-[10px] uppercase tracking-[1.3px] text-muted">
-                Highest nearby
-              </Text>
-              <LedDisplay value={formatPrice(max)} height={36} color="#1a5a3a" />
+              <Text className="font-mono text-[9px] text-muted-foreground">highest nearby</Text>
+              <LedDisplay value={formatPrice(maxPrice)} height={36} color="#1a5a3a" dimColor="rgba(0,60,30,0.12)" />
+              <Text className="mt-2 font-mono text-[9px] text-muted-foreground">save up to</Text>
+              <MoneyText value={savingsOn50L} size="lg" color="#00e5a0" />
+              <Text className="font-mono text-[9px] text-muted-foreground">on 50L fill</Text>
             </View>
           </View>
-
-          <View className="mt-5 flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs text-muted">Save up to</Text>
-              <MoneyText value={save50L} size="lg" />
-            </View>
-            <Badge variant="green">✓ Lock this now</Badge>
+          <View className="mt-4 flex-row items-center">
+            <Badge variant="green">Lock this now</Badge>
+            <Text className="ml-2 text-[10px] text-muted-foreground">{sorted[0]?.name ?? '—'}</Text>
           </View>
         </Card>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="mt-6"
-          contentContainerStyle={{ gap: 10 }}
-        >
-          {FUEL_TYPES.map((type) => {
-            const isActive = type === fuelType;
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
+          {FUEL_OPTIONS.map((option) => {
+            const isActive = option.key === fuelType;
             return (
               <Pressable
-                key={type}
-                onPress={() => handleFuelSelect(type)}
-                className={`rounded-full border px-4 py-2 ${
-                  isActive ? 'border-accent bg-accent/10' : 'border-border bg-bg-3'
-                }`}
+                key={option.key}
+                accessibilityRole="button"
+                accessibilityLabel={`Select ${option.label}`}
+                onPress={() => handleFuelSelect(option.key)}
+                className={`mr-2 rounded-full px-4 py-1.5 ${isActive ? 'border border-accent bg-accent/10' : 'border border-border bg-bg-3'}`}
               >
-                <Text
-                  className={`font-mono text-[11px] uppercase tracking-[1.2px] ${
-                    isActive ? 'text-accent' : 'text-muted'
-                  }`}
-                >
-                  {type}
-                </Text>
+                <Text className={`text-xs ${isActive ? 'font-body font-medium text-accent' : 'font-body text-muted-foreground'}`}>{option.label}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
 
-        <Card className="mt-6">
+        <Card className="mb-3 mt-5">
           <View className="flex-row items-center justify-between">
-            <Text className="font-display text-base text-white">Nearby Stations</Text>
-            <Badge variant="gray">{`${sortedStations.length} stations`}</Badge>
+            <Text className="font-display text-sm font-semibold">Nearby Stations</Text>
+            <Badge variant="gray">{`${sorted.length} found`}</Badge>
           </View>
           <FlatList
-            data={sortedStations}
+            data={sorted}
             keyExtractor={(item) => item.id}
             scrollEnabled={false}
             renderItem={({ item, index }) => (
-              <StationRow
-                station={item}
-                rank={index + 1}
-                fuelType={fuelType}
-                minPrice={min}
-                maxPrice={max}
-                onPress={handleStationPress}
-              />
+              <StationRow station={item} rank={index + 1} index={index} fuelType={fuelType} minPrice={minPrice} maxPrice={maxPrice} onPress={handleStationPress} />
             )}
-            getItemLayout={(_, index) => ({
-              length: STATION_ROW_HEIGHT,
-              offset: STATION_ROW_HEIGHT * index,
-              index,
-            })}
-            ItemSeparatorComponent={() => <View className="h-4" />}
-            className="mt-4"
+            getItemLayout={(_, index) => ({ length: STATION_ROW_HEIGHT, offset: STATION_ROW_HEIGHT * index, index })}
+            ItemSeparatorComponent={() => <View className="h-px bg-border" />}
+            className="mt-3"
           />
         </Card>
 
-        <Text className="mt-5 text-center text-xs text-muted">
-          Tap a station for details &amp; lock tip
-        </Text>
+        <Text className="py-2 text-center font-mono text-[10px] text-muted-foreground">Tap a station for details &amp; lock tip</Text>
       </View>
     </ScrollView>
   );
 });
 
 type StationRowProps = {
-  station: Station;
+  station: PriceStation;
   rank: number;
-  fuelType: FuelType;
+  index: number;
+  fuelType: FuelKey;
   minPrice: number;
   maxPrice: number;
-  onPress: (stationId: string) => void;
+  onPress: (station: PriceStation) => void;
 };
 
-const StationRow = memo(function StationRow({
-  station,
-  rank,
-  fuelType,
-  minPrice,
-  maxPrice,
-  onPress,
-}: StationRowProps) {
-  const price = station.fuels[fuelType];
-  const isBest = price === minPrice;
+const StationRow = memo(function StationRow({ station, rank, index, fuelType, minPrice, maxPrice, onPress }: StationRowProps) {
+  const price = station[fuelType];
   const range = Math.max(1, maxPrice - minPrice);
-  const progress = 1 - (price - minPrice) / range;
-  const progressWidth = `${Math.max(12, progress * 100)}%`;
-  const handlePress = useCallback(() => onPress(station.id), [onPress, station.id]);
+  const progress = ((maxPrice - price) / range) * 100;
+  const progressWidth = `${Math.max(0, Math.min(100, progress))}%`;
+  const handlePress = useCallback(() => onPress(station), [onPress, station]);
 
   return (
-    <Pressable
-      onPress={handlePress}
-      className="min-h-[112px] rounded-xl border border-border/60 bg-bg-3 px-4 py-4"
-    >
-      <View className="flex-row items-center justify-between gap-3">
+    <Pressable onPress={handlePress} accessibilityRole="button" accessibilityLabel={`View ${station.name} station`} className="py-4">
+      <View className="flex-row items-start gap-3">
+        <Text className={`w-6 font-mono text-sm ${rank === 1 ? 'text-accent' : 'text-muted-foreground'}`}>{rank}</Text>
         <View className="flex-1">
-          <View className="flex-row items-center gap-2">
-            <Text
-              className={`font-mono text-xs ${
-                rank === 1 ? 'text-accent' : 'text-muted'
-              }`}
-            >
-              #{rank}
-            </Text>
-            <Text className="text-[13px] font-medium text-white">{station.name}</Text>
-            {isBest ? <Badge variant="green">Best</Badge> : null}
+          <Text className="font-body text-sm font-medium text-white" numberOfLines={1}>{station.name}</Text>
+          <Text className="font-mono text-[10px] text-muted-foreground" numberOfLines={1}>{station.address}</Text>
+          <View className="mt-1.5 h-1.5 overflow-hidden rounded-full border border-border bg-bg-3">
+            <View className="h-full rounded-full bg-accent" style={{ width: progressWidth as `${number}%` }} />
           </View>
-          <Text className="mt-1 text-[10px] text-muted">{station.address}</Text>
-          <View className="mt-3 h-1.5 w-full rounded-full bg-border/60">
-            <View className="h-1.5 rounded-full bg-accent" style={{ width: progressWidth }} />
-          </View>
-          <Text className="mt-2 text-[10px] text-muted">{station.distanceKm} km away</Text>
+          <Text className="mt-1 font-mono text-[10px] text-muted-foreground">{station.distance} km away</Text>
         </View>
-        <LedDisplay value={formatPrice(price)} height={28} color={isBest ? '#ff6b00' : '#1a5a3a'} />
+        <View className="items-end gap-1">
+          <LedDisplay value={formatPrice(price)} height={28} color={index === 0 ? '#ff6b00' : '#1a5a3a'} dimColor={index === 0 ? 'rgba(255,107,0,0.07)' : 'rgba(0,60,30,0.12)'} />
+          <Text className="font-mono text-[9px] text-muted-foreground">¢/L</Text>
+          {index === 0 ? <Badge variant="green" className="text-[9px]">Best</Badge> : null}
+        </View>
       </View>
     </Pressable>
   );

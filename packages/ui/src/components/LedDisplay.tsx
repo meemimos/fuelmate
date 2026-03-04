@@ -6,6 +6,7 @@ type LedDisplayProps = {
   value: string;
   height?: number;
   color?: string;
+  dimColor?: string;
 };
 
 const BASE_HEIGHT = 180;
@@ -86,11 +87,18 @@ const rgbaFromHex = (hexColor: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-export function LedDisplay({ value, height = 56, color = '#ff6b00' }: LedDisplayProps) {
+export function LedDisplay({
+  value,
+  height = 56,
+  color = '#ff6b00',
+  dimColor,
+}: LedDisplayProps) {
   const scale = height / BASE_HEIGHT;
   const digitWidth = BASE_WIDTH * scale;
   const gap = BASE_GAP * scale;
   const dotWidth = BASE_DOT_WIDTH * scale;
+  const inactiveColor = dimColor ?? color;
+  const inactiveOpacity = dimColor ? 1 : 0.2;
 
   const chars = value.split('');
   const totalWidth = chars.reduce((sum, char, index) => {
@@ -140,8 +148,8 @@ export function LedDisplay({ value, height = 56, color = '#ff6b00' }: LedDisplay
             height={segment.height}
             rx={BASE_THICKNESS / 2}
             ry={BASE_THICKNESS / 2}
-            fill={color}
-            opacity={0.2}
+            fill={inactiveColor}
+            opacity={inactiveOpacity}
           />
         ))}
         {activeSegments.map((segmentIndex) => {
@@ -179,6 +187,7 @@ export function LedDisplay({ value, height = 56, color = '#ff6b00' }: LedDisplay
     <View
       className={cx('rounded-2xl border border-border/70 bg-bg-3 px-4 py-3')}
       style={containerStyle}
+      accessibilityLabel={`${value} cents per litre`}
     >
       {Platform.OS === 'web' ? (
         <svg

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger';
 type ButtonSize = 'sm' | 'md';
@@ -11,6 +12,8 @@ export type ButtonProps = {
   size: ButtonSize;
   fullWidth?: boolean;
   icon?: ReactNode;
+  className?: string;
+  accessibilityLabel?: string;
 };
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
@@ -39,12 +42,22 @@ export function Button({
   size,
   fullWidth,
   icon,
+  className,
+  accessibilityLabel,
 }: ButtonProps) {
+  const handlePress = async () => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress?.();
+  };
+
   const baseClasses = cx(
     'items-center justify-center rounded-xl font-display font-semibold',
     SIZE_CLASSES[size],
     VARIANT_CLASSES[variant],
-    fullWidth ? 'w-full' : 'self-start'
+    fullWidth ? 'w-full' : 'self-start',
+    className
   );
 
   const content = (
@@ -58,7 +71,8 @@ export function Button({
     return (
       <button
         type="button"
-        onClick={onPress}
+        onClick={handlePress}
+        aria-label={accessibilityLabel}
         className={cx(baseClasses, 'transition-opacity hover:opacity-90 active:opacity-80')}
       >
         {content}
@@ -68,7 +82,9 @@ export function Button({
 
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       className={({ pressed }) => cx(baseClasses, pressed ? 'opacity-80' : undefined)}
     >
       {content}

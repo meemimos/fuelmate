@@ -25,11 +25,15 @@ const storage = createJSONStorage(() => {
     // Web: use localStorage directly, with SSR guard
     if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
       // SSR fallback - return a no-op storage that matches localStorage API
-      return {
+      const noopStorage: Storage = {
         getItem: () => null,
         setItem: () => {},
         removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        length: 0,
       } as Storage;
+      return noopStorage;
     }
     return localStorage;
   }
@@ -104,8 +108,6 @@ export const useAuthStore = create<AuthState>()(
         if (!state) return { session: null, user: null };
         return { session: state.session ?? null, user: state.user ?? null };
       },
-      // Skip hydration errors on web during SSR
-      skipHydration: Platform.OS === 'web' && typeof window === 'undefined',
     }
   )
 );

@@ -58,7 +58,11 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(FUEL_ALERT_TASK)) {
 
 export default function RootLayout() {
   const router = useRouter();
-  const { user, initialize, loading } = useAuthStore();
+  
+  // ✅ Guard against store not being ready on web
+  const user = useAuthStore((s) => s?.user ?? null);
+  const initialize = useAuthStore((s) => s?.initialize ?? (() => {}));
+  const loading = useAuthStore((s) => s?.loading ?? true);
 
   const [fontsLoaded] = useFonts({
     Geist_400Regular,

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import { Badge, Card, LedDisplay, MoneyText, OfflineBanner, ScreenHeader, Skeleton } from '@fuelmate/ui';
-import { MOCK_STATIONS } from '@fuelmate/lib/mockData';
+import { MOCK_STATIONS } from '@fuelmate/lib';
 import { TabErrorBoundary } from '@/components/TabErrorBoundary';
 
 type FuelKey = 'unleaded' | 'premium' | 'diesel' | 'e10';

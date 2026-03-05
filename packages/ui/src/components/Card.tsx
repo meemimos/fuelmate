@@ -21,7 +21,7 @@ const cx = (...classes: Array<string | undefined>) => classes.filter(Boolean).jo
 export function Card({ children, className, variant = 'default' }: CardProps) {
   return (
     <View
-      className={cx('rounded-2xl border p-4 shadow-sm shadow-black/40', VARIANT_CLASSES[variant], className)}
+      className={cx('rounded-2xl border p-5 shadow-sm shadow-black/40', VARIANT_CLASSES[variant], className)}
     >
       {children}
     </View>

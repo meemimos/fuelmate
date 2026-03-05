@@ -78,15 +78,15 @@ const PricesScreen = memo(function PricesScreen() {
   return (
     <ScrollView
       className="flex-1 bg-bg"
-      contentContainerStyle={{ paddingBottom: 28 }}
+      contentContainerStyle={{ paddingBottom: 32 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00e5a0" />}
     >
       <OfflineBanner />
-      <View className="px-6 pt-6">
+      <View className="px-6 pt-8">
         <ScreenHeader title="Price Finder" badge="Live · Sydney" />
 
         {loading ? (
-          <View className="py-2">
+          <View className="mt-8 space-y-3">
             {[0, 1, 2].map((i) => (
               <Card key={`p-s-${i}`} className="mb-2">
                 <Skeleton height={14} />
@@ -96,30 +96,32 @@ const PricesScreen = memo(function PricesScreen() {
           </View>
         ) : null}
 
-        <Card variant="fuel" className="mb-3">
-          <Text className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">BEST LOCAL PRICE</Text>
-          <View className="flex-row items-center justify-between gap-4">
-            <View className="flex-1">
-              <View className="flex-row items-end">
-                <LedDisplay value={formatPrice(minPrice)} height={72} color="#ff6b00" />
-                <Text className="ml-1 mb-2 self-end font-mono text-xs text-muted-foreground">¢/L</Text>
+        <View className="mt-8">
+          <Card variant="fuel">
+            <Text className="mb-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Best Local Price</Text>
+            <View className="flex-row items-center justify-between gap-4">
+              <View className="flex-1">
+                <View className="flex-row items-end">
+                  <LedDisplay value={formatPrice(minPrice)} height={72} color="#ff6b00" />
+                  <Text className="ml-1 mb-2 self-end font-mono text-xs text-muted-foreground">¢/L</Text>
+                </View>
+              </View>
+              <View className="items-end">
+                <Text className="font-mono text-[9px] text-muted-foreground">highest nearby</Text>
+                <LedDisplay value={formatPrice(maxPrice)} height={36} color="#1a5a3a" dimColor="rgba(0,60,30,0.12)" />
+                <Text className="mt-3 font-mono text-[9px] text-muted-foreground">save up to</Text>
+                <MoneyText value={savingsOn50L} size="lg" color="#00e5a0" />
+                <Text className="font-mono text-[9px] text-muted-foreground">on 50L fill</Text>
               </View>
             </View>
-            <View className="items-end">
-              <Text className="font-mono text-[9px] text-muted-foreground">highest nearby</Text>
-              <LedDisplay value={formatPrice(maxPrice)} height={36} color="#1a5a3a" dimColor="rgba(0,60,30,0.12)" />
-              <Text className="mt-2 font-mono text-[9px] text-muted-foreground">save up to</Text>
-              <MoneyText value={savingsOn50L} size="lg" color="#00e5a0" />
-              <Text className="font-mono text-[9px] text-muted-foreground">on 50L fill</Text>
+            <View className="mt-5 flex-row items-center gap-3">
+              <Badge variant="green">Lock this now</Badge>
+              <Text className="text-[10px] text-muted-foreground">{sorted[0]?.name ?? '—'}</Text>
             </View>
-          </View>
-          <View className="mt-4 flex-row items-center">
-            <Badge variant="green">Lock this now</Badge>
-            <Text className="ml-2 text-[10px] text-muted-foreground">{sorted[0]?.name ?? '—'}</Text>
-          </View>
-        </Card>
+          </Card>
+        </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-4">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-8 -mx-6 px-6">
           {FUEL_OPTIONS.map((option) => {
             const isActive = option.key === fuelType;
             return (
@@ -128,33 +130,35 @@ const PricesScreen = memo(function PricesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Select ${option.label}`}
                 onPress={() => handleFuelSelect(option.key)}
-                className={`mr-2 rounded-full px-4 py-1.5 ${isActive ? 'border border-accent bg-accent/10' : 'border border-border bg-bg-3'}`}
+                className={`mr-3 rounded-full px-5 py-2 border ${isActive ? 'border-accent bg-accent/15' : 'border-border bg-bg-3'}`}
               >
-                <Text className={`text-xs ${isActive ? 'font-body font-medium text-accent' : 'font-body text-muted-foreground'}`}>{option.label}</Text>
+                <Text className={`text-sm ${isActive ? 'font-semibold text-accent' : 'font-body text-muted-foreground'}`}>{option.label}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
 
-        <Card className="mb-3 mt-5">
-          <View className="flex-row items-center justify-between">
-            <Text className="font-display text-sm font-semibold">Nearby Stations</Text>
-            <Badge variant="gray">{`${sorted.length} found`}</Badge>
-          </View>
-          <FlatList
-            data={sorted}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            renderItem={({ item, index }) => (
-              <StationRow station={item} rank={index + 1} index={index} fuelType={fuelType} minPrice={minPrice} maxPrice={maxPrice} onPress={handleStationPress} />
-            )}
-            getItemLayout={(_, index) => ({ length: STATION_ROW_HEIGHT, offset: STATION_ROW_HEIGHT * index, index })}
-            ItemSeparatorComponent={() => <View className="h-px bg-border" />}
-            className="mt-3"
-          />
-        </Card>
+        <View className="mt-8">
+          <Card>
+            <View className="flex-row items-center justify-between gap-3 mb-5">
+              <Text className="font-display text-lg font-semibold text-white">Nearby Stations</Text>
+              <Badge variant="gray">{`${sorted.length} found`}</Badge>
+            </View>
+            <FlatList
+              data={sorted}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              renderItem={({ item, index }) => (
+                <StationRow station={item} rank={index + 1} index={index} fuelType={fuelType} minPrice={minPrice} maxPrice={maxPrice} onPress={handleStationPress} />
+              )}
+              getItemLayout={(_, index) => ({ length: STATION_ROW_HEIGHT, offset: STATION_ROW_HEIGHT * index, index })}
+              ItemSeparatorComponent={() => <View className="h-px bg-border" />}
+              className="mt-4"
+            />
+          </Card>
+        </View>
 
-        <Text className="py-2 text-center font-mono text-[10px] text-muted-foreground">Tap a station for details &amp; lock tip</Text>
+        <Text className="mt-6 pb-4 text-center font-mono text-[10px] text-muted-foreground">Tap a station for details &amp; lock tip</Text>
       </View>
     </ScrollView>
   );

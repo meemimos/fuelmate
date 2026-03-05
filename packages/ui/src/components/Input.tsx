@@ -10,6 +10,7 @@ export type InputProps = {
   placeholder?: string;
   type?: InputType;
   suffix?: ReactNode;
+  error?: string;
 };
 
 export function Input({
@@ -19,6 +20,7 @@ export function Input({
   placeholder,
   type = 'text',
   suffix,
+  error,
 }: InputProps) {
   const keyboardType =
     type === 'number' ? 'numeric' : type === 'email' ? 'email-address' : 'default';
@@ -29,7 +31,11 @@ export function Input({
       <Text className="text-[10px] font-mono uppercase tracking-[1.5px] text-muted">
         {label}
       </Text>
-      <View className="flex-row items-center rounded-xl border border-border bg-bg-3 px-4 py-3">
+      <View
+        className={`flex-row items-center rounded-xl border bg-bg-3 px-4 py-3 ${
+          error ? 'border-red-500/50' : 'border-border'
+        }`}
+      >
         <TextInput
           className="flex-1 font-body text-base text-white"
           placeholder={placeholder}
@@ -41,6 +47,7 @@ export function Input({
         />
         {suffix ? <View className="ml-3">{suffix}</View> : null}
       </View>
+      {error ? <Text className="font-mono text-[10px] text-red-400">{error}</Text> : null}
     </View>
   );
 }

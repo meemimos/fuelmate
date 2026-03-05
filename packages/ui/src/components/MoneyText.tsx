@@ -24,6 +24,7 @@ export function MoneyText({ value, size = 'md', color = '#ffffff', showSign }: M
     <Text
       className="font-money text-white"
       style={{ fontSize: SIZE_MAP[size], color }}
+      accessibilityLabel={`$${formatted}`}
     >
       {`${sign}$${formatted}`}
     </Text>

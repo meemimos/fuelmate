@@ -6,6 +6,7 @@ type BadgeVariant = 'green' | 'amber' | 'red' | 'blue' | 'gray';
 export type BadgeProps = {
   children: ReactNode;
   variant: BadgeVariant;
+  className?: string;
 };
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
@@ -18,12 +19,13 @@ const VARIANT_CLASSES: Record<BadgeVariant, string> = {
 
 const cx = (...classes: Array<string | undefined>) => classes.filter(Boolean).join(' ');
 
-export function Badge({ children, variant }: BadgeProps) {
+export function Badge({ children, variant, className }: BadgeProps) {
   return (
     <Text
       className={cx(
         'self-start rounded-full border px-2.5 py-1 text-[10px] font-mono uppercase tracking-[1.2px]',
-        VARIANT_CLASSES[variant]
+        VARIANT_CLASSES[variant],
+        className
       )}
     >
       {children}

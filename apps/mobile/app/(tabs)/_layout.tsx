@@ -1,23 +1,62 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { BarChart2, Bell, MapPin, Users } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#ff6b00',
-        tabBarInactiveTintColor: '#8888a0',
-        tabBarStyle: { backgroundColor: '#0c0c0e', borderTopColor: '#252530' },
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
-      <Tabs.Screen name="prices" options={{ title: 'Prices' }} />
-      <Tabs.Screen name="alerts" options={{ title: 'Alerts' }} />
-      <Tabs.Screen name="group" options={{ title: 'Group' }} />
-      <Tabs.Screen name="tracker" options={{ title: 'Tracker' }} />
+        headerShown: false,
+        tabBarActiveTintColor: '#00e5a0',
+        tabBarInactiveTintColor: '#50505e',
+        tabBarStyle: {
+          backgroundColor: '#131316',
+          borderTopColor: '#252530',
+          borderTopWidth: 1,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 64,
+        },
+        tabBarLabelStyle: {
+          fontFamily: 'GeistMono_400Regular',
+          fontSize: 9,
+          textTransform: 'uppercase',
+          letterSpacing: 0.6,
+        },
+      }}
+    >
+      <Tabs.Screen
+        name="prices"
+        options={{
+          title: 'Prices',
+          tabBarLabel: 'Prices',
+          tabBarIcon: ({ color, size }) => <MapPin color={color} size={size ?? 18} />,
+        }}
+      />
+      <Tabs.Screen
+        name="alerts"
+        options={{
+          title: 'Alerts',
+          tabBarLabel: 'Alerts',
+          tabBarIcon: ({ color, size }) => <Bell color={color} size={size ?? 18} />,
+        }}
+      />
+      <Tabs.Screen
+        name="group"
+        options={{
+          title: 'Group',
+          tabBarLabel: 'Group',
+          tabBarIcon: ({ color, size }) => <Users color={color} size={size ?? 18} />,
+        }}
+      />
+      <Tabs.Screen
+        name="tracker"
+        options={{
+          title: 'Tracker',
+          tabBarLabel: 'Tracker',
+          tabBarIcon: ({ color, size }) => <BarChart2 color={color} size={size ?? 18} />,
+        }}
+      />
     </Tabs>
   );
 }

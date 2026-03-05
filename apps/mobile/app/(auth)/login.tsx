@@ -6,7 +6,7 @@ import * as WebBrowser from 'expo-web-browser';
 
 import { Button, Input } from '@fuelmate/ui';
 import { useAuthStore } from '@fuelmate/store';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@fuelmate/lib';
 
 WebBrowser.maybeCompleteAuthSession();
 

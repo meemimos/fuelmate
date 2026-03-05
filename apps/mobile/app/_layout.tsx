@@ -1,134 +1,64 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Geist_400Regular, Geist_700Bold } from '@expo-google-fonts/geist';
+import { Geist_400Regular, Geist_700Bold, Geist_800ExtraBold } from '@expo-google-fonts/geist';
 import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono';
 import { PlayfairDisplay_400Regular_Italic } from '@expo-google-fonts/playfair-display';
 import { useFonts } from 'expo-font';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { Platform, View } from 'react-native';
+import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Platform, View, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 
+import { registerForPushNotifications, saveTokenToSupabase, showToast, MOCK_STATIONS } from '@fuelmate/lib';
+import { useAlertsStore, useAuthStore } from '@fuelmate/store';
+import { colorScheme } from 'nativewind';
+
 import '../global.css';
-import { useColorScheme } from '@/components/useColorScheme';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { toastConfig } from '@/components/ToastConfig';
 
-// NativeWind v4 CSS interop is handled automatically via Babel preset
-
 export { ErrorBoundary } from 'expo-router';
 
-export const unstable_settings = {
-  initialRouteName: 'index',
-};
+const FUEL_ALERT_TASK = 'CHECK-FUEL-ALERTS';
+
+function NativeWindThemeProvider({
+  defaultTheme,
+  children,
+}: {
+  defaultTheme: 'dark' | 'light';
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    colorScheme.set(defaultTheme);
+  }, [defaultTheme]);
+
+  return <View className={defaultTheme === 'dark' ? 'dark flex-1' : 'flex-1'}>{children}</View>;
+}
 
 if (Platform.OS !== 'web') {
   SplashScreen.preventAutoHideAsync();
 }
 
-function WebAppShell() {
-  const store = require('@fuelmate/store');
-  const useAuthStore = store.useAuthStore;
-  const colorScheme = useColorScheme();
-  const router = useRouter();
-  const segments = useSegments();
-  const session = useAuthStore((state: any) => state.session);
-  const loading = useAuthStore((state: any) => state.loading);
-
-  useEffect(() => {
-    // Initialize auth store for web
-    useAuthStore.getState().initialize();
-  }, []);
-
-  useEffect(() => {
-    if (loading) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    // For web, allow access to index page, otherwise redirect based on auth
-    if (segments.length === 0 || segments[0] === 'index') return;
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/welcome');
+if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(FUEL_ALERT_TASK)) {
+  TaskManager.defineTask(FUEL_ALERT_TASK, async () => {
+    try {
+      const { checkAlerts } = useAlertsStore.getState();
+      const stations = MOCK_STATIONS;
+      await checkAlerts(stations);
+      return BackgroundFetch.BackgroundFetchResult.NewData;
+    } catch {
+      return BackgroundFetch.BackgroundFetchResult.Failed;
     }
-    if (session && inAuthGroup) {
-      router.replace('/(tabs)/prices');
-    }
-  }, [loading, router, segments, session]);
-
-  // Ensure NativeWind styles are injected on mount for web
-  useEffect(() => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      // Force style injection by accessing a styled component
-      const testEl = document.createElement('div');
-      testEl.className = 'r-flex-1';
-      testEl.style.display = 'none';
-      document.body.appendChild(testEl);
-      setTimeout(() => {
-        if (testEl.parentNode) {
-          document.body.removeChild(testEl);
-        }
-      }, 0);
-    }
-  }, []);
-
-  return (
-    <SafeAreaProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal/station" options={{ presentation: 'modal', title: 'Station' }} />
-          <Stack.Screen name="modal/add-alert" options={{ presentation: 'modal', title: 'Add Alert' }} />
-          <Stack.Screen name="modal/log-fill" options={{ presentation: 'modal', title: 'Log Fill' }} />
-          <Stack.Screen name="modal/invite" options={{ presentation: 'modal', title: 'Invite' }} />
-        </Stack>
-      </ThemeProvider>
-      <Toast config={toastConfig} />
-    </SafeAreaProvider>
-  );
-}
-
-function NativeAppShell() {
-  const store = require('@fuelmate/store');
-  const useAuthStore = store.useAuthStore;
-
-  const colorScheme = useColorScheme();
-  const router = useRouter();
-  const segments = useSegments();
-  const session = useAuthStore((state: any) => state.session);
-  const loading = useAuthStore((state: any) => state.loading);
-
-  useEffect(() => {
-    if (loading) return;
-    const inAuthGroup = segments[0] === '(auth)';
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/welcome');
-    }
-    if (session && inAuthGroup) {
-      router.replace('/(tabs)/prices');
-    }
-  }, [loading, router, segments, session]);
-
-  return (
-    <SafeAreaProvider>
-      <OfflineBanner />
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal/station" options={{ presentation: 'modal', title: 'Station' }} />
-          <Stack.Screen name="modal/add-alert" options={{ presentation: 'modal', title: 'Add Alert' }} />
-          <Stack.Screen name="modal/log-fill" options={{ presentation: 'modal', title: 'Log Fill' }} />
-          <Stack.Screen name="modal/invite" options={{ presentation: 'modal', title: 'Invite' }} />
-        </Stack>
-      </ThemeProvider>
-      <Toast config={toastConfig} />
-    </SafeAreaProvider>
-  );
+  });
 }
 
 export default function RootLayout() {
+  const router = useRouter();
+  
   // Clear any corrupted navigation state on web
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -138,36 +68,98 @@ export default function RootLayout() {
       } catch {}
     }
   }, [])
+  
+  // ✅ Guard against store not being ready on web
+  const user = useAuthStore((s) => s?.user ?? null);
+  const initialize = useAuthStore((s) => s?.initialize ?? (() => {}));
+  const loading = useAuthStore((s) => s?.loading ?? true);
 
-  const [loaded, error] = useFonts({
+  const [fontsLoaded] = useFonts({
     Geist_400Regular,
     Geist_700Bold,
+    Geist_800ExtraBold,
     GeistMono_400Regular,
     PlayfairDisplay_400Regular_Italic,
   });
 
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    initialize();
+  }, [initialize]);
 
   useEffect(() => {
-    if (loaded) {
-      if (Platform.OS !== 'web') {
-        const store = require('@fuelmate/store');
-        store.useAuthStore.getState().initialize();
-        SplashScreen.hideAsync();
-      }
-      // For web, NativeWind v4 handles CSS injection automatically via react-native-css-interop
+    if (loading) return;
+    // Guard against router not being initialized (web SSR/hydration)
+    if (Platform.OS === 'web') {
+      // On web, wait for client-side hydration before navigating
+      if (typeof window === 'undefined') return;
+      // Use requestAnimationFrame to ensure DOM and router are ready
+      const rafId = requestAnimationFrame(() => {
+        try {
+          if (!user) router.replace('/(auth)/welcome');
+          else router.replace('/(tabs)/prices');
+        } catch (error) {
+          // Router state might not be initialized yet
+          console.warn('Router navigation deferred:', error);
+        }
+      });
+      return () => cancelAnimationFrame(rafId);
     }
-  }, [loaded]);
+    
+    // Native: navigate immediately
+    if (!user) router.replace('/(auth)/welcome');
+    else router.replace('/(tabs)/prices');
+  }, [user, loading, router]);
 
-  if (!loaded) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0f19' }}>
-        <Text style={{ color: '#dbeafe' }}>Loading FuelMate…</Text>
-      </View>
-    );
-  }
+  useEffect(() => {
+    if (!user) return;
 
-  return Platform.OS === 'web' ? <WebAppShell /> : <NativeAppShell />;
+    registerForPushNotifications().then((token) => {
+      if (token) saveTokenToSupabase(token);
+    });
+
+    const sub = Notifications.addNotificationReceivedListener((n) => {
+      showToast(n.request.content.title ?? 'Alert', 'info');
+    });
+
+    return () => sub.remove();
+  }, [user]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    BackgroundFetch.registerTaskAsync(FUEL_ALERT_TASK, {
+      minimumInterval: 15 * 60,
+      stopOnTerminate: false,
+      startOnBoot: true,
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!fontsLoaded || loading) return;
+    if (Platform.OS !== 'web') {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, loading]);
+
+  if (!fontsLoaded || loading) return null;
+
+  return (
+    <NativeWindThemeProvider defaultTheme="dark">
+      <SafeAreaProvider>
+        <View className="flex-1 bg-bg dark:bg-bg">
+          <OfflineBanner />
+          <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal/station" options={{ presentation: 'modal', title: 'Station' }} />
+            <Stack.Screen name="modal/add-alert" options={{ presentation: 'modal', title: 'Add Alert' }} />
+            <Stack.Screen name="modal/log-fill" options={{ presentation: 'modal', title: 'Log Fill' }} />
+            <Stack.Screen name="modal/invite" options={{ presentation: 'modal', title: 'Invite' }} />
+          </Stack>
+          <Toast config={toastConfig} />
+        </View>
+      </SafeAreaProvider>
+    </NativeWindThemeProvider>
+  );
 }

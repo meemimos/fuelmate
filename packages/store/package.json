@@ -9,6 +9,7 @@
     "test:watch": "jest --watch --passWithNoTests"
   },
   "dependencies": {
+    "@fuelmate/lib": "workspace:^",
     "@supabase/supabase-js": "^2.98.0",
     "expo-secure-store": "^55.0.8",
     "react-native-toast-message": "^2.3.3",

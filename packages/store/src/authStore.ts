@@ -3,8 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
-import { showError, showSuccess } from '../lib/toast';
+import { showToast, supabase } from '@fuelmate/lib';
 
 const SecureStore =
   Platform.OS !== 'web'
@@ -20,27 +19,30 @@ type AuthState = {
   initialize: () => Promise<void>;
 };
 
+// Create storage adapter - Zustand v5 createJSONStorage expects a function returning storage-like object
 const storage = createJSONStorage(() => {
   if (Platform.OS === 'web') {
-    return {
-      getItem: (name) => (typeof localStorage === 'undefined' ? null : localStorage.getItem(name)),
-      setItem: (name, value) => {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(name, value);
-        }
-      },
-      removeItem: (name) => {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem(name);
-        }
-      },
-    };
+    // Web: use localStorage directly, with SSR guard
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      // SSR fallback - return a no-op storage that matches localStorage API
+      const noopStorage: Storage = {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {},
+        clear: () => {},
+        key: () => null,
+        length: 0,
+      } as Storage;
+      return noopStorage;
+    }
+    return localStorage;
   }
 
+  // Mobile: return async storage adapter matching SecureStore API
   return {
-    getItem: (name) => (SecureStore ? SecureStore.getItemAsync(name) : Promise.resolve(null)),
-    setItem: (name, value) => (SecureStore ? SecureStore.setItemAsync(name, value) : Promise.resolve()),
-    removeItem: (name) =>
+    getItem: (name: string) => (SecureStore ? SecureStore.getItemAsync(name) : Promise.resolve(null)),
+    setItem: (name: string, value: string) => (SecureStore ? SecureStore.setItemAsync(name, value) : Promise.resolve()),
+    removeItem: (name: string) =>
       SecureStore ? SecureStore.deleteItemAsync(name) : Promise.resolve(),
   };
 });
@@ -56,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
           if ('mock' in input && input.mock) {
             const devUser = { id: 'dev-user-123' } as User;
             set({ user: devUser, session: null, loading: false });
-            showSuccess('Signed in (dev)');
+            showToast('Signed in (dev)', 'success');
             return;
           }
           const { data, error } = await supabase.auth.signInWithPassword({
@@ -67,9 +69,12 @@ export const useAuthStore = create<AuthState>()(
             throw error;
           }
           set({ session: data.session, user: data.session?.user ?? null });
-          showSuccess('Signed in');
+          showToast('Signed in', 'success');
         } catch (error) {
-          showError('Sign in failed', error instanceof Error ? error.message : 'Try again.');
+          showToast(
+            error instanceof Error ? `Sign in failed: ${error.message}` : 'Sign in failed',
+            'error'
+          );
           throw error;
         }
       },
@@ -77,9 +82,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           await supabase.auth.signOut();
           set({ session: null, user: null });
-          showSuccess('Signed out');
+          showToast('Signed out', 'success');
         } catch (error) {
-          showError('Sign out failed', error instanceof Error ? error.message : 'Try again.');
+          showToast(
+            error instanceof Error ? `Sign out failed: ${error.message}` : 'Sign out failed',
+            'error'
+          );
           throw error;
         }
       },
@@ -111,7 +119,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'fuelmate-auth',
       storage,
-      partialize: (state) => ({ session: state.session, user: state.user }),
+      partialize: (state) => {
+        // Guard against undefined state during SSR/hydration
+        if (!state) return { session: null, user: null };
+        return { session: state.session ?? null, user: state.user ?? null };
+      },
     }
   )
 );

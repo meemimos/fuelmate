@@ -21,20 +21,24 @@ export default function InviteModal() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-bg">
       <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 24 }}>
-        <View className="px-6 py-8">
-          <Text className="font-display text-2xl text-white">Invite to Group</Text>
-          <Text className="mt-2 font-body text-base text-muted">They'll track savings together with you</Text>
+        <View className="px-6 py-10">
+          <View>
+            <Text className="font-display text-3xl font-bold text-white">Invite to Group</Text>
+            <Text className="mt-2 font-body text-sm text-muted">They'll track savings together with you</Text>
+          </View>
 
-          <View className="mt-6 gap-4">
-            <Input label="Email address" value={email} onChangeText={setEmail} type="email" placeholder="friend@example.com" />
+          <View className="mt-8 gap-5">
+            <View>
+              <Input label="Email address" value={email} onChangeText={setEmail} type="email" placeholder="friend@example.com" />
+            </View>
 
-            <Card variant="savings" className="mb-5">
+            <Card variant="info" className="mt-2">
               <Text className="font-body text-xs leading-relaxed text-muted">
                 Each member uses their own My 7-Eleven account to lock prices. FuelMate just helps you coordinate and track together.
               </Text>
             </Card>
 
-            <Button variant="primary" size="md" fullWidth accessibilityLabel="Send invite" icon={<Text className="text-black">→</Text>} onPress={handleInvite}>
+            <Button variant="accent" size="lg" fullWidth accessibilityLabel="Send invite" onPress={handleInvite}>
               Send Invite
             </Button>
           </View>

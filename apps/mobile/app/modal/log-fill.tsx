@@ -57,55 +57,59 @@ export default function LogFillModal() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-bg">
       <ScrollView className="flex-1 bg-bg" contentContainerStyle={{ paddingBottom: 28 }}>
-        <View className="px-6 py-8">
-          <Text className="mb-1 font-display text-xl font-bold tracking-tight text-white">Log a Fill-up</Text>
-          <Text className="mb-5 font-mono text-xs text-muted">Record your savings after using a fuel lock</Text>
-
-          <View className="mb-4 gap-2">
-            <Text className="text-[10px] font-mono uppercase tracking-[1.5px] text-muted">Station</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {stationOptions.map((option) => (
-                <Button key={option} variant={form.station === option ? 'primary' : 'secondary'} size="sm" accessibilityLabel={`Select station ${option}`} onPress={() => setForm((f) => ({ ...f, station: option }))}>
-                  {option}
-                </Button>
-              ))}
-            </ScrollView>
+        <View className="px-6 py-10">
+          <View>
+            <Text className="mb-1 font-display text-3xl font-bold text-white">Log a Fill-up</Text>
+            <Text className="font-body text-sm text-muted">Record your savings after using a fuel lock</Text>
           </View>
 
-          <View className="mb-4 gap-2">
-            <Text className="text-[10px] font-mono uppercase tracking-[1.5px] text-muted">Fuel Type</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-              {FUEL_TYPES.map((option) => (
-                <Button key={option} variant={form.fuelType === option ? 'primary' : 'secondary'} size="sm" accessibilityLabel={`Select fuel ${option}`} onPress={() => setForm((f) => ({ ...f, fuelType: option }))}>
-                  {option}
-                </Button>
-              ))}
-            </ScrollView>
-          </View>
-
-          <View className="flex-row gap-3">
-            <View className="flex-1">
-              <Input label="Locked Price (¢)" value={form.lockedPrice} onChangeText={(v) => setForm((f) => ({ ...f, lockedPrice: v }))} type="number" placeholder="158.9" />
+          <View className="mt-8 gap-5">
+            <View className="gap-3">
+              <Text className="text-[10px] font-mono uppercase tracking-[1.5px] text-muted">Station</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {stationOptions.map((option) => (
+                  <Button key={option} variant={form.station === option ? 'accent' : 'secondary'} size="sm" accessibilityLabel={`Select station ${option}`} onPress={() => setForm((f) => ({ ...f, station: option }))}>
+                    {option}
+                  </Button>
+                ))}
+              </ScrollView>
             </View>
-            <View className="flex-1">
-              <Input label="Pump Price (¢)" value={form.pumpPrice} onChangeText={(v) => setForm((f) => ({ ...f, pumpPrice: v }))} type="number" placeholder="179.9" error={pumpError} />
+
+            <View className="gap-3">
+              <Text className="text-[10px] font-mono uppercase tracking-[1.5px] text-muted">Fuel Type</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {FUEL_TYPES.map((option) => (
+                  <Button key={option} variant={form.fuelType === option ? 'accent' : 'secondary'} size="sm" accessibilityLabel={`Select fuel ${option}`} onPress={() => setForm((f) => ({ ...f, fuelType: option }))}>
+                    {option}
+                  </Button>
+                ))}
+              </ScrollView>
             </View>
+
+            <View className="flex-row gap-3">
+              <View className="flex-1">
+                <Input label="Locked Price (¢)" value={form.lockedPrice} onChangeText={(v) => setForm((f) => ({ ...f, lockedPrice: v }))} type="number" placeholder="158.9" />
+              </View>
+              <View className="flex-1">
+                <Input label="Pump Price (¢)" value={form.pumpPrice} onChangeText={(v) => setForm((f) => ({ ...f, pumpPrice: v }))} type="number" placeholder="179.9" error={pumpError} />
+              </View>
+            </View>
+
+            <View>
+              <Input label="Litres filled" value={form.litres} onChangeText={(v) => setForm((f) => ({ ...f, litres: v }))} type="number" placeholder="45" error={litresError} />
+            </View>
+
+            {saved !== null ? (
+              <Card variant="info" className="mt-2">
+                <Text className="mb-2 font-mono text-xs text-muted">Estimated saving</Text>
+                <MoneyText value={Number(saved)} size="xl" color="#00e5a0" />
+              </Card>
+            ) : null}
+
+            <Button variant="accent" size="lg" fullWidth accessibilityLabel="Save fill-up record" onPress={handleSave}>
+              Save Record
+            </Button>
           </View>
-
-          <View className="mt-4">
-            <Input label="Litres filled" value={form.litres} onChangeText={(v) => setForm((f) => ({ ...f, litres: v }))} type="number" placeholder="45" error={litresError} />
-          </View>
-
-          {saved !== null ? (
-            <Card variant="savings" className="mb-4 mt-4">
-              <Text className="mb-2 font-mono text-xs text-muted">Estimated saving</Text>
-              <MoneyText value={Number(saved)} size="xl" color="#00e5a0" />
-            </Card>
-          ) : null}
-
-          <Button variant="primary" size="md" fullWidth accessibilityLabel="Save fill-up record" icon={<Text className="text-black">✓</Text>} onPress={handleSave}>
-            Save Record
-          </Button>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

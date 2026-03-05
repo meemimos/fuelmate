@@ -33,78 +33,82 @@ export default function StationModal() {
   const fuelKey = fuelType ?? 'unleaded';
 
   return (
-    <ScrollView className="flex-1 bg-bg px-6 pt-6" contentContainerStyle={{ paddingBottom: 32 }}>
-      <Text className="font-display text-xl font-bold tracking-tight text-white">
-        {station.name}
-      </Text>
-      <Text className="mb-4 mt-1 font-mono text-xs text-muted-foreground">
-        {station.address} · {distance} km away
-      </Text>
+    <ScrollView className="flex-1 bg-bg px-6 pt-8" contentContainerStyle={{ paddingBottom: 32 }}>
+      <View className="mb-6">
+        <Text className="font-display text-3xl font-bold text-white">
+          {station.name}
+        </Text>
+        <Text className="mt-2 font-body text-sm text-muted">
+          {station.address} · {distance} km away
+        </Text>
+      </View>
 
-      <View className="flex-row items-center">
-        <LedDisplay value={price.toFixed(1)} height={56} color="#ff6b00" />
-        <Text className="ml-1 mb-2 self-end font-mono text-xs text-muted-foreground">¢/L</Text>
-        <View className="flex-1" />
+      <View className="mb-8 flex-row items-center gap-4">
+        <View className="flex-1">
+          <LedDisplay value={price.toFixed(1)} height={64} color="#ff6b00" />
+          <Text className="mt-2 font-mono text-xs text-muted">¢/L</Text>
+        </View>
         <View className="items-end">
-          <Text className="font-mono text-[10px] text-muted-foreground">save on 50L fill</Text>
+          <Text className="font-mono text-xs text-muted">save on 50L</Text>
           <MoneyText value={save50L} size="lg" color="#00e5a0" />
         </View>
       </View>
 
-      <View className="mt-4 flex-row gap-2">
+      <View className="mb-6 flex-row gap-2">
         <Badge variant="green">{fuelKey}</Badge>
         <Badge variant="blue">{distance} km</Badge>
       </View>
 
-      <Text className="mb-3 mt-4 font-display text-xs font-semibold text-white">
-        All fuel prices
-      </Text>
-      <View className="flex-row flex-wrap justify-between">
-        {(['unleaded', 'premium', 'diesel', 'e10'] as FuelKey[]).map((key) => {
-          const isActive = key === fuelKey;
-          const label = `${key.charAt(0).toUpperCase()}${key.slice(1)}`;
-          return (
-            <Card
-              key={key}
-              className={`mb-3 w-[48%] ${
-                isActive ? 'border-fuel/30' : 'border-border'
-              }`}
-            >
-              <LedDisplay
-                value={(station[key] ?? 0).toFixed(1)}
-                height={24}
-                color={isActive ? '#ff6b00' : '#1a5a3a'}
-                dimColor={isActive ? 'rgba(255,107,0,0.06)' : 'rgba(0,40,20,0.12)'}
-              />
-              <Text className="mt-1.5 font-mono text-[10px] text-muted-foreground">{label}</Text>
-            </Card>
-          );
-        })}
+      <View>
+        <Text className="mb-4 font-display text-sm font-semibold text-white">
+          All fuel prices
+        </Text>
+        <View className="flex-row flex-wrap justify-between gap-3">
+          {(['unleaded', 'premium', 'diesel', 'e10'] as FuelKey[]).map((key) => {
+            const isActive = key === fuelKey;
+            const label = `${key.charAt(0).toUpperCase()}${key.slice(1)}`;
+            return (
+              <Card
+                key={key}
+                className={`w-[48%] ${
+                  isActive ? 'border-fuel/30' : 'border-border'
+                }`}
+              >
+                <LedDisplay
+                  value={(station[key] ?? 0).toFixed(1)}
+                  height={32}
+                  color={isActive ? '#ff6b00' : '#1a5a3a'}
+                  dimColor={isActive ? 'rgba(255,107,0,0.06)' : 'rgba(0,40,20,0.12)'}
+                />
+                <Text className="mt-2 font-mono text-xs text-muted">{label}</Text>
+              </Card>
+            );
+          })}
+        </View>
       </View>
 
-      <Card variant="savings" className="mt-4">
-        <Text className="mb-2 font-mono text-xs text-muted-foreground">💡 Lock tip</Text>
-        <Text className="font-body text-sm leading-relaxed text-white">
+      <Card variant="info" className="mt-8">
+        <Text className="mb-2 font-mono text-xs text-muted">💡 Lock tip</Text>
+        <Text className="font-body text-sm leading-relaxed text-muted-foreground">
           Open your My 7-Eleven app → Fuel Lock → this station shows {price.toFixed(1)} ¢/L. Lock
           it in and you'll have 7 days to fill up.
         </Text>
       </Card>
 
-      <View className="mt-4">
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth
-          icon="bell"
-          onPress={() => {
-            alertsStore.addAlert({ fuelType: fuelKey, threshold: price - 2, station: station.name });
-            showToast(`Alert set for ${station.name}`, 'success');
-            router.back();
-          }}
-        >
-          Set Alert for This Station
-        </Button>
-      </View>
+      <Button
+        variant="accent"
+        size="lg"
+        fullWidth
+        className="mt-8"
+        accessibilityLabel="Set alert"
+        onPress={() => {
+          alertsStore.addAlert({ fuelType: fuelKey, threshold: price - 2, station: station.name });
+          showToast(`Alert set for ${station.name}`, 'success');
+          router.back();
+        }}
+      >
+        🔔 Set Alert for This Station
+      </Button>
     </ScrollView>
   );
 }

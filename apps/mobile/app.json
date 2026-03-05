@@ -62,8 +62,7 @@
       [
         "expo-router",
         {
-          "origin": "https://fuelmate-lovat.vercel.app",
-          "initialRouteName": "(tabs)"
+          "origin": "https://fuelmate-lovat.vercel.app"
         }
       ]
     ],

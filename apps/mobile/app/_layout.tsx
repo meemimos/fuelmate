@@ -7,7 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Notifications from 'expo-notifications';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -58,14 +58,19 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(FUEL_ALERT_TASK)) {
 
 export default function RootLayout() {
   const router = useRouter();
+  const hydrationRef = useRef(false);
   
-  // Clear any corrupted navigation state on web
+  // Clear any corrupted navigation state on web ONCE at startup
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && !hydrationRef.current) {
       try {
-        localStorage.removeItem('NAVIGATION_STATE_V1')
-        sessionStorage.clear()
-      } catch {}
+        localStorage.removeItem('NAVIGATION_STATE_V1');
+        sessionStorage.removeItem('NAVIGATION_STATE_V1');
+        sessionStorage.clear();
+      } catch (e) {
+        // Silently ignore any storage errors
+      }
+      hydrationRef.current = true;
     }
   }, [])
   
@@ -88,26 +93,52 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loading) return;
-    // Guard against router not being initialized (web SSR/hydration)
+    
+    // On web, use a more robust navigation strategy
     if (Platform.OS === 'web') {
-      // On web, wait for client-side hydration before navigating
+      // Ensure window is available (client-side only)
       if (typeof window === 'undefined') return;
-      // Use requestAnimationFrame to ensure DOM and router are ready
-      const rafId = requestAnimationFrame(() => {
-        try {
-          if (!user) router.replace('/(auth)/welcome');
-          else router.replace('/(tabs)/prices');
-        } catch (error) {
-          // Router state might not be initialized yet
-          console.warn('Router navigation deferred:', error);
-        }
-      });
-      return () => cancelAnimationFrame(rafId);
+      
+      // Wait for all DOM updates and router initialization to complete
+      // Use a multi-step timing strategy to handle various hydration issues
+      const timerId = setTimeout(() => {
+        if (!router) return;
+        
+        const frameId = requestAnimationFrame(() => {
+          try {
+            // Additional safety: ensure router methods are available
+            if (typeof router.replace !== 'function') {
+              console.warn('Router not ready yet');
+              return;
+            }
+            
+            const targetRoute = user ? '/(tabs)/prices' : '/(auth)/welcome';
+            
+            // Use try-catch and log for debugging
+            try {
+              router.replace(targetRoute);
+            } catch (navError) {
+              console.warn('Navigation error:', navError);
+              // Don't retry here - let the component manage navigation
+            }
+          } catch (error) {
+            console.warn('Unexpected error during navigation setup:', error);
+          }
+        });
+        
+        return () => cancelAnimationFrame(frameId);
+      }, 100); // Increased delay to ensure DOM is fully hydrated
+      
+      return () => clearTimeout(timerId);
     }
     
-    // Native: navigate immediately
-    if (!user) router.replace('/(auth)/welcome');
-    else router.replace('/(tabs)/prices');
+    // Native: navigate immediately (router is always ready on native)
+    try {
+      const targetRoute = user ? '/(tabs)/prices' : '/(auth)/welcome';
+      router.replace(targetRoute);
+    } catch (error) {
+      console.warn('Native navigation error:', error);
+    }
   }, [user, loading, router]);
 
   useEffect(() => {
@@ -117,8 +148,16 @@ export default function RootLayout() {
       if (token) saveTokenToSupabase(token);
     });
 
-    const sub = Notifications.addNotificationReceivedListener((n) => {
-      showToast(n.request.content.title ?? 'Alert', 'info');
+    const sub = Notifications.addNotificationReceivedListener((notification) => {
+      try {
+        // Safely access notification properties with fallbacks
+        const title = notification?.request?.content?.title ?? notification?.request?.content?.titleNumberOfLinesKey ?? 'Alert';
+        const message = notification?.request?.content?.body ?? '';
+        showToast(title, 'info');
+      } catch (error) {
+        console.warn('Error processing notification:', error);
+        showToast('Alert received', 'info');
+      }
     });
 
     return () => sub.remove();
@@ -143,6 +182,11 @@ export default function RootLayout() {
 
   if (!fontsLoaded || loading) return null;
 
+  // Prevent SSR issues on web by only rendering on client
+  if (Platform.OS === 'web' && typeof window === 'undefined') {
+    return null;
+  }
+
   return (
     <NativeWindThemeProvider defaultTheme="dark">
       <SafeAreaProvider>
@@ -163,3 +207,8 @@ export default function RootLayout() {
     </NativeWindThemeProvider>
   );
 }
+
+// Configure initial route for web platform
+export const unstable_settings = {
+  initialRouteName: '(tabs)',
+};

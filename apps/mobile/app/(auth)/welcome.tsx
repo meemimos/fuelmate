@@ -3,6 +3,7 @@ import { Animated, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Button, LedDisplay, MoneyText } from '@fuelmate/ui';
+import { useAuthStore } from '@fuelmate/store';
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -60,6 +61,29 @@ export default function WelcomeScreen() {
         >
           I have an account
         </Button>
+        {/* Dev sign-in for quick testing — visible in dev or when EXPO_PUBLIC_DEV_LOGIN is set */}
+        {(
+          (typeof process !== 'undefined' && (process.env as any).EXPO_PUBLIC_DEV_LOGIN === 'true') ||
+          (typeof globalThis !== 'undefined' && (globalThis as any).__FUELMATE_DEV_LOGIN === true) ||
+          (typeof __DEV__ !== 'undefined' && ((__DEV__ as any) === true))
+        ) && (
+          <Button
+            variant="danger"
+            size="sm"
+            fullWidth
+            onPress={async () => {
+              try {
+                await useAuthStore.getState().signIn({ mock: true });
+                // Navigate to tabbed area after mock sign in
+                router.replace('/(tabs)/prices');
+              } catch (e) {
+                // ignore
+              }
+            }}
+          >
+            Dev Sign In
+          </Button>
+        )}
       </View>
     </View>
   );

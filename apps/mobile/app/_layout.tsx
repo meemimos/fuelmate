@@ -129,6 +129,16 @@ function NativeAppShell() {
 }
 
 export default function RootLayout() {
+  // Clear any corrupted navigation state on web
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.removeItem('NAVIGATION_STATE_V1')
+        sessionStorage.clear()
+      } catch {}
+    }
+  }, [])
+
   const [loaded, error] = useFonts({
     Geist_400Regular,
     Geist_700Bold,

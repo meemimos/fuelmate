@@ -85,6 +85,22 @@ export const useAuthStore = create<AuthState>()(
       },
       initialize: async () => {
         set({ loading: true });
+
+        // Dev-login bypass: set a mock user/session when the dev flag is enabled.
+        // Enable by setting EXPO_PUBLIC_DEV_LOGIN=true in your environment or
+        // by setting globalThis.__FUELMATE_DEV_LOGIN = true in a dev console.
+        const envFlag = typeof process !== 'undefined' && (process.env as any).EXPO_PUBLIC_DEV_LOGIN === 'true';
+        const globalFlag = typeof globalThis !== 'undefined' && (globalThis as any).__FUELMATE_DEV_LOGIN === true;
+        if (envFlag || globalFlag) {
+          const devUser = { id: 'dev-user-123', email: 'dev@localhost' } as User;
+          set({ user: devUser, session: null, loading: false });
+          // still attach listener to keep behavior consistent
+          supabase.auth.onAuthStateChange((_event, session) => {
+            set({ session: session ?? null, user: session?.user ?? null });
+          });
+          return;
+        }
+
         const { data } = await supabase.auth.getSession();
         set({ session: data.session ?? null, user: data.session?.user ?? null, loading: false });
         supabase.auth.onAuthStateChange((_event, session) => {

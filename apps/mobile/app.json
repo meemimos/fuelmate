@@ -59,7 +59,13 @@
       "policy": "appVersion"
     },
     "plugins": [
-      "expo-router"
+      [
+        "expo-router",
+        {
+          "origin": "https://fuelmate-lovat.vercel.app",
+          "initialRouteName": "(tabs)"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

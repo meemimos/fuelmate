@@ -172,16 +172,16 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         .select('*')
         .eq('group_id', group.id);
 
-      const memberIds = (groupMembers ?? []).map((member) => member.user_id);
+      const memberIds = (groupMembers ?? []).map((member: MemberRow) => member.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
         .select('*')
         .in('id', memberIds);
 
       const profileMap = new Map<string, ProfileRow>();
-      profiles?.forEach((profile) => profileMap.set(profile.id, profile));
+      (profiles ?? []).forEach((profile: ProfileRow) => profileMap.set(profile.id, profile));
 
-      const mappedMembers: Member[] = (groupMembers ?? []).map((member: MemberRow, index) => {
+      const mappedMembers: Member[] = (groupMembers ?? []).map((member: MemberRow, index: number) => {
         const profile = profileMap.get(member.user_id);
         return {
           id: member.id,
@@ -221,8 +221,66 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       showToast('Invite sent', 'success');
       return;
     }
-    showToast('Invite queued', 'info');
-    void email;
+
+    try {
+      const group = get().group;
+      if (!group) {
+        throw new Error('No group selected');
+      }
+
+      const userId = await getUserId();
+
+      // Create invitation record - database will auto-generate UUID and token
+      const { data: invitation, error: inviteError } = await supabase
+        .from('invitations')
+        .insert({
+          group_id: group.id,
+          invited_by: userId,
+          email,
+          token: crypto.randomUUID?.() ?? `token-${Date.now()}`,
+        })
+        .select()
+        .single();
+
+      if (inviteError) {
+        if (inviteError.code === '23505') {
+          throw new Error(`${email} already has a pending invitation`);
+        }
+        throw inviteError;
+      }
+
+      // Call edge function to send email invitation
+      const inviteLink = `${
+        typeof window !== 'undefined'
+          ? window.location.origin
+          : 'https://fuelmate-lovat.vercel.app'
+      }/accept-invite?token=${invitation.token}`;
+
+      // Send email via edge function (with fallback for development)
+      const { error: emailError } = await supabase.functions.invoke('send-invite-email', {
+        body: {
+          email,
+          inviteLink,
+          groupName: group.name,
+          invitedBy: (await supabase.auth.getUser()).data.user?.email,
+        },
+      });
+
+      // Even if edge function fails, the invitation was created, so we consider it success
+      // In dev/testing, edge function might not be available
+      if (emailError) {
+        console.warn('Failed to send email, but invitation was created:', emailError);
+        showToast(`Invite created (email may not have been sent in development)`, 'info');
+      } else {
+        showToast(`Invite sent to ${email}!`, 'success');
+      }
+    } catch (error) {
+      showToast(
+        error instanceof Error ? `Unable to send invite: ${error.message}` : 'Unable to send invite',
+        'error'
+      );
+      throw error;
+    }
   },
   removeMember: async (memberId) => {
     if (__DEV__) {

@@ -72,6 +72,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      group_invitations: {
+        Row: {
+          id: string;
+          group_id: string;
+          invited_by: string;
+          invited_email: string;
+          status: 'pending' | 'accepted' | 'declined' | 'expired';
+          token: string;
+          expires_at: string;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          group_id: string;
+          invited_by: string;
+          invited_email: string;
+          status?: 'pending' | 'accepted' | 'declined' | 'expired';
+          token: string;
+          expires_at: string;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          group_id?: string;
+          invited_by?: string;
+          invited_email?: string;
+          status?: 'pending' | 'accepted' | 'declined' | 'expired';
+          token?: string;
+          expires_at?: string;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
       price_alerts: {
         Row: {
           id: string;
@@ -183,7 +216,15 @@ export type Database = {
       };
     };
     Views: {};
-    Functions: {};
+    Functions: {
+      accept_group_invitation: {
+        Args: {
+          invitation_token: string;
+          user_id: string;
+        };
+        Returns: Json;
+      };
+    };
     Enums: {};
     CompositeTypes: {};
   };

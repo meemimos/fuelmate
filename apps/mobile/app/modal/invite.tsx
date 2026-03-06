@@ -3,19 +3,27 @@ import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-na
 import { useRouter } from 'expo-router';
 
 import { Button, Card, Input } from '@fuelmate/ui';
-import { showToast } from '@fuelmate/lib';
 import { useGroupStore } from '@fuelmate/store';
 
 export default function InviteModal() {
   const router = useRouter();
   const { addMember } = useGroupStore();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const isValidEmail = email.includes('@') && email.includes('.');
 
   const handleInvite = async () => {
-    if (!email) return;
-    await addMember(email);
-    showToast(`Invite sent to ${email}`, 'success');
-    router.back();
+    if (!isValidEmail || loading) return;
+    try {
+      setLoading(true);
+      await addMember(email);
+      router.back();
+    } catch (error) {
+      // Error handling is done in addMember via showToast
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,14 +40,23 @@ export default function InviteModal() {
               <Input label="Email address" value={email} onChangeText={setEmail} type="email" placeholder="friend@example.com" />
             </View>
 
-            <Card variant="info" className="mt-2">
+            <Card variant="info">
+              <Text className="font-body text-xs leading-relaxed text-muted mb-2 font-semibold">
+                They'll receive an invite to join your group
+              </Text>
               <Text className="font-body text-xs leading-relaxed text-muted">
-                Each member uses their own My 7-Eleven account to lock prices. FuelMate just helps you coordinate and track together.
+                Each member uses their own My 7-Eleven account to lock prices. FuelMate helps you coordinate and track savings together.
               </Text>
             </Card>
 
-            <Button variant="accent" size="lg" fullWidth accessibilityLabel="Send invite" onPress={handleInvite}>
-              Send Invite
+            <Button 
+              variant="accent" 
+              size="lg" 
+              fullWidth 
+              accessibilityLabel="Send invite"
+              onPress={handleInvite}
+            >
+              {loading ? 'Sending...' : 'Send Invite'}
             </Button>
           </View>
         </View>

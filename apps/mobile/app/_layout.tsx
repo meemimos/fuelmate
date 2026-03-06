@@ -151,7 +151,7 @@ export default function RootLayout() {
     const sub = Notifications.addNotificationReceivedListener((notification) => {
       try {
         // Safely access notification properties with fallbacks
-        const title = notification?.request?.content?.title ?? notification?.request?.content?.titleNumberOfLinesKey ?? 'Alert';
+        const title = notification?.request?.content?.title ?? 'Alert';
         const message = notification?.request?.content?.body ?? '';
         showToast(title, 'info');
       } catch (error) {
@@ -196,10 +196,50 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="modal/station" options={{ presentation: 'modal', title: 'Station' }} />
-            <Stack.Screen name="modal/add-alert" options={{ presentation: 'modal', title: 'Add Alert' }} />
-            <Stack.Screen name="modal/log-fill" options={{ presentation: 'modal', title: 'Log Fill' }} />
-            <Stack.Screen name="modal/invite" options={{ presentation: 'modal', title: 'Invite' }} />
+            <Stack.Screen 
+              name="accept-invite" 
+              options={{ 
+                headerShown: false,
+                headerBackVisible: false,
+                headerTransparent: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="modal/station" 
+              options={{ 
+                presentation: 'modal', 
+                headerShown: false,
+                headerBackVisible: false,
+                headerTransparent: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="modal/add-alert" 
+              options={{ 
+                presentation: 'modal', 
+                headerShown: false,
+                headerBackVisible: false,
+                headerTransparent: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="modal/log-fill" 
+              options={{ 
+                presentation: 'modal', 
+                headerShown: false,
+                headerBackVisible: false,
+                headerTransparent: true,
+              }} 
+            />
+            <Stack.Screen 
+              name="modal/invite" 
+              options={{ 
+                presentation: 'modal', 
+                headerShown: false,
+                headerBackVisible: false,
+                headerTransparent: true,
+              }} 
+            />
           </Stack>
           <Toast config={toastConfig} />
         </View>

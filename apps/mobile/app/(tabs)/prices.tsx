@@ -1,11 +1,12 @@
-import { memo, useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { memo, useCallback, useMemo, useState, useEffect } from 'react';
+import { FlatList, Pressable, RefreshControl, ScrollView, Text, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import { Badge, Card, LedDisplay, MoneyText, OfflineBanner, ScreenHeader, Skeleton } from '@fuelmate/ui';
-import { MOCK_STATIONS } from '@fuelmate/lib';
+import { MOCK_STATIONS_BY_CITY, CITY_COORDINATES, getCityFromLocation, getDeviceLocation, requestLocationPermission, CityName } from '@fuelmate/lib';
 import { TabErrorBoundary } from '@/components/TabErrorBoundary';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type FuelKey = 'unleaded' | 'premium' | 'diesel' | 'e10';
 
@@ -35,11 +36,89 @@ const PricesScreen = memo(function PricesScreen() {
   const router = useRouter();
   const [fuelType, setFuelType] = useState<FuelKey>('unleaded');
   const [refreshing, setRefreshing] = useState(false);
+  const [city, setCity] = useState<CityName | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState(true);
   const loading = false;
 
+  // Initialize location on mount
+  useEffect(() => {
+    const initializeLocation = async () => {
+      try {
+        // Try to load saved city preference first
+        const savedCity = await AsyncStorage.getItem('userCity');
+        if (savedCity && (savedCity in CITY_COORDINATES)) {
+          setCity(savedCity as CityName);
+          setLoadingLocation(false);
+          return;
+        }
+
+        // Request location permission
+        const hasPermission = await requestLocationPermission();
+        
+        if (hasPermission) {
+          const location = await getDeviceLocation();
+          if (location) {
+            const detectedCity = getCityFromLocation(location.latitude, location.longitude);
+            if (detectedCity) {
+              setCity(detectedCity);
+              await AsyncStorage.setItem('userCity', detectedCity);
+            } else {
+              // No city detected, use default
+              setCity('Sydney' as CityName);
+            }
+          } else {
+            setCity('Sydney' as CityName);
+          }
+        } else {
+          // Permission denied, ask user to manually select city
+          setCity(null);
+        }
+      } catch (error) {
+        console.error('Error initializing location:', error);
+        setCity('Sydney' as CityName);
+      } finally {
+        setLoadingLocation(false);
+      }
+    };
+
+    initializeLocation();
+  }, []);
+
+  // Show city selector if no city is detected and location is required
+  useEffect(() => {
+    if (!loadingLocation && city === null) {
+      showCitySelector();
+    }
+  }, [loadingLocation, city]);
+
+  const showCitySelector = useCallback(() => {
+    const cityOptions = Object.keys(CITY_COORDINATES) as CityName[];
+    const options = cityOptions.map((c) => ({
+      text: c,
+      onPress: async () => {
+        setCity(c);
+        await AsyncStorage.setItem('userCity', c);
+      },
+    }));
+
+    Alert.alert(
+      'Select Your City',
+      'We couldn\'t detect your location. Please select your city:',
+      [
+        ...options,
+        {
+          text: 'Cancel',
+          onPress: () => setCity('Sydney' as CityName),
+          style: 'cancel',
+        },
+      ]
+    );
+  }, []);
+
   const stations = useMemo<PriceStation[]>(
-    () =>
-      MOCK_STATIONS.map((station) => ({
+    () => {
+      const cityStations = city && city in MOCK_STATIONS_BY_CITY ? MOCK_STATIONS_BY_CITY[city] : MOCK_STATIONS_BY_CITY.Sydney;
+      return (cityStations || []).map((station) => ({
         id: station.id,
         name: station.name,
         address: station.address,
@@ -48,8 +127,9 @@ const PricesScreen = memo(function PricesScreen() {
         premium: station.fuels.Premium,
         diesel: station.fuels.Diesel,
         e10: station.fuels.E10,
-      })),
-    []
+      }));
+    },
+    [city]
   );
 
   const sorted = useMemo(() => [...stations].sort((a, b) => a[fuelType] - b[fuelType]), [fuelType, stations]);
@@ -75,6 +155,10 @@ const PricesScreen = memo(function PricesScreen() {
     [fuelType, router]
   );
 
+  const handleChangeCity = useCallback(async () => {
+    showCitySelector();
+  }, [showCitySelector]);
+
   return (
     <ScrollView
       className="flex-1 bg-bg"
@@ -83,9 +167,23 @@ const PricesScreen = memo(function PricesScreen() {
     >
       <OfflineBanner />
       <View className="px-6 pt-8">
-        <ScreenHeader title="Price Finder" badge="Live · Sydney" />
+        {loadingLocation ? (
+          <ScreenHeader title="Price Finder" badge="Loading..." />
+        ) : (
+          <View className="mb-8">
+            <View className="flex-row items-center justify-between">
+              <Text className="font-display text-2xl font-bold text-white">Price Finder</Text>
+              <Pressable
+                onPress={handleChangeCity}
+                className="rounded-full bg-bg-3 px-3 py-1.5 border border-border"
+              >
+                <Text className="font-mono text-xs text-accent">📍 {city || 'Select'}</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
-        {loading ? (
+        {loadingLocation ? (
           <View className="mt-8 space-y-3">
             {[0, 1, 2].map((i) => (
               <Card key={`p-s-${i}`} className="mb-2">

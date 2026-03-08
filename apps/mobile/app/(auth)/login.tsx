@@ -63,11 +63,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleDevLogin = async () => {
-    await signIn({ mock: true });
-    router.replace('/(tabs)/prices');
-  };
-
   return (
     <View className="flex-1 bg-bg px-6 py-10">
       <Text className="text-[24px] font-display font-semibold text-white">Welcome back</Text>
@@ -76,12 +71,7 @@ export default function LoginScreen() {
       </Text>
 
       <View className="mt-8 gap-5">
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth
-          onPress={handleGoogleSignIn}
-        >
+        <Button variant="primary" size="md" fullWidth onPress={handleGoogleSignIn}>
           Continue with Google
         </Button>
         <View className="h-px bg-border/60" />
@@ -99,19 +89,9 @@ export default function LoginScreen() {
           placeholder="••••••••"
           type="password"
         />
-        <Button
-          variant="secondary"
-          size="md"
-          fullWidth
-          onPress={handleEmailSignIn}
-        >
+        <Button variant="secondary" size="md" fullWidth onPress={handleEmailSignIn}>
           {loading ? 'Signing in...' : 'Sign in'}
         </Button>
-        {__DEV__ ? (
-          <Button variant="danger" size="sm" fullWidth onPress={handleDevLogin}>
-            Dev login (mock user)
-          </Button>
-        ) : null}
       </View>
     </View>
   );

@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -11,10 +11,6 @@ const AlertsScreen = memo(function AlertsScreen() {
   const router = useRouter();
   const { alerts, loading, toggleAlert, deleteAlert, fetchAlerts } = useAlertsStore();
   const [refreshing, setRefreshing] = useState(false);
-  const [triggeredAlerts] = useState([
-    { station: '7-Eleven Castle Hill', price: 158.9, fuel: 'Unleaded', when: '2h ago' },
-    { station: '7-Eleven Blacktown', price: 157.3, fuel: 'Unleaded', when: 'Yesterday' },
-  ]);
 
   useEffect(() => {
     fetchAlerts();
@@ -27,6 +23,10 @@ const AlertsScreen = memo(function AlertsScreen() {
   };
 
   const activeCount = alerts.filter((a) => a.is_active).length;
+  const triggeredAlerts = useMemo(
+    () => alerts.filter((a) => Boolean(a.last_triggered_at)).slice(0, 5),
+    [alerts]
+  );
 
   return (
     <ScrollView
@@ -70,12 +70,9 @@ const AlertsScreen = memo(function AlertsScreen() {
               </View>
             ) : (
               alerts.map((alert) => (
-                <View
-                  key={alert.id}
-                  className="flex-row items-center gap-4 border-b border-border py-4 last:border-0"
-                >
+                <View key={alert.id} className="flex-row items-center gap-4 border-b border-border py-4 last:border-0">
                   <View
-                    className={`h-10 w-10 rounded-xl border items-center justify-center flex-shrink-0 ${
+                    className={`h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border ${
                       alert.is_active ? 'border-accent/30 bg-accent/10' : 'border-amber-400/30 bg-amber-400/10'
                     }`}
                   >
@@ -86,9 +83,7 @@ const AlertsScreen = memo(function AlertsScreen() {
                     <Text className="font-body text-sm font-semibold text-white">
                       {alert.fuel_type} · Under {alert.threshold_cents}¢/L
                     </Text>
-                    <Text className="mt-1 font-mono text-xs text-muted">
-                      {alert.station_name ?? 'Any 7-Eleven'}
-                    </Text>
+                    <Text className="mt-1 font-mono text-xs text-muted">{alert.station_name ?? 'Any 7-Eleven'}</Text>
                     <View className="mt-2 self-start">
                       <Badge variant={alert.is_active ? 'green' : 'amber'}>
                         {alert.is_active ? 'Watching' : 'Paused'}
@@ -96,64 +91,63 @@ const AlertsScreen = memo(function AlertsScreen() {
                     </View>
                   </View>
 
-                  <View className="flex-row gap-2 flex-shrink-0">
+                  <View className="flex-shrink-0 flex-row gap-2">
                     <Button
                       variant="secondary"
-                    size="sm"
-                    accessibilityLabel={alert.is_active ? 'Pause alert' : 'Resume alert'}
-                    onPress={() => toggleAlert(alert.id, !alert.is_active)}
-                  >
-                    {alert.is_active ? '🔒' : '🔔'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    accessibilityLabel="Delete alert"
-                    onPress={() => {
-                      Alert.alert('Remove alert?', 'This cannot be undone', [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Remove',
-                          style: 'destructive',
-                          onPress: async () => {
-                            await deleteAlert(alert.id);
-                            showToast('Alert removed', 'info');
+                      size="sm"
+                      accessibilityLabel={alert.is_active ? 'Pause alert' : 'Resume alert'}
+                      onPress={() => toggleAlert(alert.id, !alert.is_active)}
+                    >
+                      {alert.is_active ? '🔒' : '🔔'}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      accessibilityLabel="Delete alert"
+                      onPress={() => {
+                        Alert.alert('Remove alert?', 'This cannot be undone', [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Remove',
+                            style: 'destructive',
+                            onPress: async () => {
+                              await deleteAlert(alert.id);
+                              showToast('Alert removed', 'info');
+                            },
                           },
-                        },
-                      ]);
-                    }}
-                  >
-                    🗑️
-                  </Button>
+                        ]);
+                      }}
+                    >
+                      🗑️
+                    </Button>
+                  </View>
                 </View>
-              </View>
-            ))
-          )}
+              ))
+            )}
           </Card>
         </View>
 
-        <View className="mt-8">
-          <Card>
-            <Text className="mb-5 font-display text-lg font-semibold text-white">Recent Triggers</Text>
-            {triggeredAlerts.map((t, idx) => (
-              <View
-                key={`${t.station}-${idx}`}
-                className="flex-row items-center gap-3 border-b border-border py-4 last:border-0"
-              >
-                <View className="h-10 w-10 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 flex-shrink-0">
-                  <Text style={{ color: '#00e5a0', fontSize: 18 }}>✓</Text>
+        {triggeredAlerts.length > 0 ? (
+          <View className="mt-8">
+            <Card>
+              <Text className="mb-5 font-display text-lg font-semibold text-white">Recent Triggers</Text>
+              {triggeredAlerts.map((t) => (
+                <View key={t.id} className="flex-row items-center gap-3 border-b border-border py-4 last:border-0">
+                  <View className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-accent/20 bg-accent/10">
+                    <Text style={{ color: '#00e5a0', fontSize: 18 }}>✓</Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-body text-sm font-semibold text-white">{t.station_name ?? 'Any 7-Eleven'}</Text>
+                    <Text className="mt-1 font-mono text-xs text-muted">
+                      {t.fuel_type} triggered at {new Date(t.last_triggered_at as string).toLocaleString()}
+                    </Text>
+                  </View>
+                  <Badge variant="green">Triggered</Badge>
                 </View>
-                <View className="flex-1">
-                  <Text className="font-body text-sm font-semibold text-white">{t.station}</Text>
-                  <Text className="mt-1 font-mono text-xs text-muted">
-                    {t.fuel} hit {t.price}¢/L · {t.when}
-                  </Text>
-                </View>
-                <Badge variant="green">Triggered</Badge>
-              </View>
-            ))}
-          </Card>
-        </View>
+              ))}
+            </Card>
+          </View>
+        ) : null}
 
         <Button
           variant="accent"
@@ -161,7 +155,7 @@ const AlertsScreen = memo(function AlertsScreen() {
           fullWidth
           accessibilityLabel="Create new price alert"
           onPress={() => router.push('/modal/add-alert')}
-          className="mt-8 mb-4"
+          className="mb-4 mt-8"
         >
           New Price Alert
         </Button>

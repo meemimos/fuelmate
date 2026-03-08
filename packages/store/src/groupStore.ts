@@ -44,73 +44,6 @@ type GroupState = {
   removeMember: (memberId: string) => Promise<void>;
 };
 
-const MOCK_GROUP: Group = {
-  id: 'group-1',
-  name: 'The Smith Family',
-  ownerId: 'dev-user-123',
-  createdAt: new Date().toISOString(),
-};
-
-const MOCK_MEMBERS: Member[] = [
-  {
-    id: 'member-1',
-    userId: 'dev-user-123',
-    name: 'You',
-    email: 'you@fuelmate.dev',
-    locks: 6,
-    saved: 128.4,
-    color: '#00e5a0',
-    isOwner: true,
-  },
-  {
-    id: 'member-2',
-    userId: 'user-2',
-    name: 'Maya',
-    email: 'maya@email.com',
-    locks: 4,
-    saved: 92.2,
-    color: '#ffb020',
-    isOwner: false,
-  },
-  {
-    id: 'member-3',
-    userId: 'user-3',
-    name: 'Jude',
-    email: 'jude@email.com',
-    locks: 3,
-    saved: 64.5,
-    color: '#6aa9ff',
-    isOwner: false,
-  },
-  {
-    id: 'member-4',
-    userId: 'user-4',
-    name: 'Priya',
-    email: 'priya@email.com',
-    locks: 1,
-    saved: 21.7,
-    color: '#ff6b00',
-    isOwner: false,
-  },
-];
-
-const MOCK_LOCKS: ActiveLock[] = [
-  {
-    id: 'lock-1',
-    memberId: 'member-1',
-    fuelType: 'Unleaded',
-    price: 158.9,
-    expiresAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'lock-2',
-    memberId: 'member-2',
-    fuelType: 'Diesel',
-    price: 171.2,
-    expiresAt: new Date(Date.now() + 36 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 const getUserId = async () => {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
@@ -133,11 +66,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   loading: false,
   fetchGroup: async () => {
     set({ loading: true });
-    if (__DEV__) {
-      set({ group: MOCK_GROUP, members: MOCK_MEMBERS, activeLocks: MOCK_LOCKS });
-      set({ loading: false });
-      return;
-    }
     try {
       const userId = await getUserId();
       const { data: ownedGroups } = await supabase
@@ -155,10 +83,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           .limit(1);
         const memberGroupId = memberships?.[0]?.group_id;
         if (memberGroupId) {
-          const { data: groups } = await supabase
-            .from('groups')
-            .select('*')
-            .eq('id', memberGroupId);
+          const { data: groups } = await supabase.from('groups').select('*').eq('id', memberGroupId);
           group = groups?.[0] ?? null;
         }
       }
@@ -174,10 +99,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         .eq('group_id', group.id);
 
       const memberIds = (groupMembers ?? []).map((member: MemberRow) => member.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', memberIds);
+      const { data: profiles } = await supabase.from('profiles').select('*').in('id', memberIds);
 
       const profileMap = new Map<string, ProfileRow>();
       (profiles ?? []).forEach((profile: ProfileRow) => profileMap.set(profile.id, profile));
@@ -188,6 +110,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
           id: member.id,
           userId: member.user_id,
           name: profile?.display_name ?? 'Member',
+          email: profile?.email ?? undefined,
           locks: 0,
           saved: 0,
           color: ['#00e5a0', '#ff6b00', '#6aa9ff', '#ffb020'][index % 4],
@@ -212,27 +135,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       showToast('Enter a group name', 'error');
       return;
     }
-    if (__DEV__) {
-      const newGroup: Group = {
-        id: `group-${Date.now()}`,
-        name: trimmedName,
-        ownerId: 'dev-user-123',
-        createdAt: new Date().toISOString(),
-      };
-      const ownerMember: Member = {
-        id: `member-${Date.now()}`,
-        userId: 'dev-user-123',
-        name: 'You',
-        email: 'you@fuelmate.dev',
-        locks: 0,
-        saved: 0,
-        color: '#00e5a0',
-        isOwner: true,
-      };
-      set({ group: newGroup, members: [ownerMember], activeLocks: [] });
-      showToast('Group created', 'success');
-      return;
-    }
+
     try {
       const userId = await getUserId();
       const { data: group, error } = await supabase
@@ -240,15 +143,13 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         .insert({ name: trimmedName, owner_id: userId })
         .select('*')
         .single();
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+
       const { error: memberError } = await supabase
         .from('group_members')
         .insert({ group_id: group.id, user_id: userId, role: 'owner' });
-      if (memberError) {
-        throw memberError;
-      }
+      if (memberError) throw memberError;
+
       const ownerMember: Member = {
         id: `owner-${userId}`,
         userId,
@@ -262,31 +163,13 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       showToast('Group created', 'success');
     } catch (error) {
       showToast(
-        error instanceof Error
-          ? `Unable to create group: ${error.message}`
-          : 'Unable to create group',
+        error instanceof Error ? `Unable to create group: ${error.message}` : 'Unable to create group',
         'error'
       );
       throw error;
     }
   },
   addMember: async (email: string) => {
-    if (__DEV__) {
-      const nextMember: Member = {
-        id: `member-${Date.now()}`,
-        userId: `user-${Date.now()}`,
-        name: email.split('@')[0],
-        email,
-        locks: 0,
-        saved: 0,
-        color: '#6aa9ff',
-        isOwner: false,
-      };
-      set({ members: [...get().members, nextMember] });
-      showToast('Invite sent', 'success');
-      return;
-    }
-
     try {
       const group = get().group;
       if (!group) {
@@ -294,8 +177,6 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       }
 
       const userId = await getUserId();
-
-      // Create invitation record - database will auto-generate UUID and token
       const { data: invitation, error: inviteError } = await supabase
         .from('invitations')
         .insert({
@@ -314,14 +195,10 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         throw inviteError;
       }
 
-      // Call edge function to send email invitation
       const inviteLink = `${
-        typeof window !== 'undefined'
-          ? window.location.origin
-          : 'https://fuelmate-lovat.vercel.app'
+        typeof window !== 'undefined' ? window.location.origin : 'https://fuelmate-lovat.vercel.app'
       }/accept-invite?token=${invitation.token}`;
 
-      // Send email via edge function (with fallback for development)
       const { error: emailError } = await supabase.functions.invoke('send-invite-email', {
         body: {
           email,
@@ -331,11 +208,9 @@ export const useGroupStore = create<GroupState>((set, get) => ({
         },
       });
 
-      // Even if edge function fails, the invitation was created, so we consider it success
-      // In dev/testing, edge function might not be available
       if (emailError) {
         console.warn('Failed to send email, but invitation was created:', emailError);
-        showToast(`Invite created (email may not have been sent in development)`, 'info');
+        showToast('Invite created (email may not have been sent)', 'info');
       } else {
         showToast(`Invite sent to ${email}!`, 'success');
       }
@@ -348,23 +223,15 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
   },
   removeMember: async (memberId) => {
-    if (__DEV__) {
-      set({ members: get().members.filter((member) => member.id !== memberId) });
-      showToast('Member removed', 'success');
-      return;
-    }
     try {
       const { error } = await supabase.from('group_members').delete().eq('id', memberId);
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
+
       set({ members: get().members.filter((member) => member.id !== memberId) });
       showToast('Member removed', 'success');
     } catch (error) {
       showToast(
-        error instanceof Error
-          ? `Unable to remove member: ${error.message}`
-          : 'Unable to remove member',
+        error instanceof Error ? `Unable to remove member: ${error.message}` : 'Unable to remove member',
         'error'
       );
       throw error;

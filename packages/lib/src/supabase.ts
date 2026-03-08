@@ -70,7 +70,8 @@ export const supabase =
           storage: Platform.OS === 'web' ? WebStorageAdapter : NativeStorageAdapter,
           autoRefreshToken: true,
           persistSession: true,
-          detectSessionInUrl: false,
+          detectSessionInUrl: true,
+          flowType: 'pkce',
         },
       })
     : createMockSupabase();

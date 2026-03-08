@@ -72,19 +72,6 @@ export function Button({
     </View>
   );
 
-  if (Platform.OS === 'web') {
-    return (
-      <button
-        type="button"
-        onClick={handlePress}
-        aria-label={accessibilityLabel}
-        className={cx(baseClasses, 'transition-opacity hover:opacity-90 active:opacity-80')}
-      >
-        {content}
-      </button>
-    );
-  }
-
   return (
     <Pressable
       onPress={handlePress}

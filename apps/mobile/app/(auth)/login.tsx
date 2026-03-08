@@ -32,7 +32,17 @@ export default function LoginScreen() {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      const redirectTo = AuthSession.makeRedirectUri({ scheme: 'mobile' });
+      if (typeof window !== 'undefined') {
+        const redirectTo = `${window.location.origin}`;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo },
+        });
+        if (error) throw error;
+        return;
+      }
+
+      const redirectTo = AuthSession.makeRedirectUri({ scheme: 'mobile', path: 'auth/callback' });
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -46,14 +56,10 @@ export default function LoginScreen() {
       }
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-      if (result.type !== 'success' || !result.url) {
-        return;
-      }
+      if (result.type !== 'success' || !result.url) return;
 
       const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(result.url);
-      if (exchangeError) {
-        throw exchangeError;
-      }
+      if (exchangeError) throw exchangeError;
 
       router.replace('/(tabs)/prices');
     } catch (error) {

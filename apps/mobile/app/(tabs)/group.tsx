@@ -20,8 +20,9 @@ type LockRow = {
 const GroupScreen = memo(function GroupScreen() {
   const router = useRouter();
   const { members, activeLocks, loading, fetchGroup, removeMember } = useGroupStore();
-  const { user } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
     fetchGroup();
@@ -31,6 +32,16 @@ const GroupScreen = memo(function GroupScreen() {
     setRefreshing(true);
     await fetchGroup();
     setRefreshing(false);
+  };
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   const totalGroupSaved = members.reduce((s, m) => s + m.saved, 0);
@@ -77,6 +88,16 @@ const GroupScreen = memo(function GroupScreen() {
       <OfflineBanner />
       <View className="px-6 pt-8">
         <ScreenHeader title="Group Locks" badge={`${members.length} members`} />
+        <View className="mt-4 items-end">
+          <Button
+            variant="secondary"
+            size="sm"
+            accessibilityLabel="Sign out"
+            onPress={handleSignOut}
+          >
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </Button>
+        </View>
 
         {loading ? (
           <View className="mt-8 space-y-3">

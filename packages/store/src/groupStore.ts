@@ -44,12 +44,35 @@ type GroupState = {
   removeMember: (memberId: string) => Promise<void>;
 };
 
-const getUserId = async () => {
+const getUser = async () => {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
     throw new Error('Not authenticated.');
   }
-  return data.user.id;
+  return data.user;
+};
+
+const getUserId = async () => (await getUser()).id;
+
+const ensureProfile = async () => {
+  const user = await getUser();
+  const displayName =
+    (user.user_metadata?.full_name as string | undefined) ||
+    (user.user_metadata?.name as string | undefined) ||
+    user.email?.split('@')[0] ||
+    'User';
+
+  const { error } = await supabase.from('profiles').upsert(
+    {
+      id: user.id,
+      email: user.email ?? null,
+      display_name: displayName,
+    },
+    { onConflict: 'id' }
+  );
+
+  if (error) throw error;
+  return user;
 };
 
 const mapGroup = (group: GroupRow): Group => ({
@@ -137,7 +160,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
     }
 
     try {
-      const userId = await getUserId();
+      const user = await ensureProfile();
+      const userId = user.id;
       const { data: group, error } = await supabase
         .from('groups')
         .insert({ name: trimmedName, owner_id: userId })

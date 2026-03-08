@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { BarChart2, Bell, MapPin, Users } from 'lucide-react-native';
+import { BarChart2, Bell, MapPin, Settings, Users } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -55,6 +55,14 @@ export default function TabLayout() {
           title: 'Tracker',
           tabBarLabel: 'Tracker',
           tabBarIcon: ({ color, size }) => <BarChart2 color={color} size={size ?? 18} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color, size }) => <Settings color={color} size={size ?? 18} />,
         }}
       />
     </Tabs>

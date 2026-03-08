@@ -39,6 +39,7 @@ type GroupState = {
   activeLocks: ActiveLock[];
   loading: boolean;
   fetchGroup: () => Promise<void>;
+  createGroup: (name: string) => Promise<void>;
   addMember: (email: string) => Promise<void>;
   removeMember: (memberId: string) => Promise<void>;
 };
@@ -203,6 +204,70 @@ export const useGroupStore = create<GroupState>((set, get) => ({
       throw error;
     } finally {
       set({ loading: false });
+    }
+  },
+  createGroup: async (name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      showToast('Enter a group name', 'error');
+      return;
+    }
+    if (__DEV__) {
+      const newGroup: Group = {
+        id: `group-${Date.now()}`,
+        name: trimmedName,
+        ownerId: 'dev-user-123',
+        createdAt: new Date().toISOString(),
+      };
+      const ownerMember: Member = {
+        id: `member-${Date.now()}`,
+        userId: 'dev-user-123',
+        name: 'You',
+        email: 'you@fuelmate.dev',
+        locks: 0,
+        saved: 0,
+        color: '#00e5a0',
+        isOwner: true,
+      };
+      set({ group: newGroup, members: [ownerMember], activeLocks: [] });
+      showToast('Group created', 'success');
+      return;
+    }
+    try {
+      const userId = await getUserId();
+      const { data: group, error } = await supabase
+        .from('groups')
+        .insert({ name: trimmedName, owner_id: userId })
+        .select('*')
+        .single();
+      if (error) {
+        throw error;
+      }
+      const { error: memberError } = await supabase
+        .from('group_members')
+        .insert({ group_id: group.id, user_id: userId, role: 'owner' });
+      if (memberError) {
+        throw memberError;
+      }
+      const ownerMember: Member = {
+        id: `owner-${userId}`,
+        userId,
+        name: 'You',
+        locks: 0,
+        saved: 0,
+        color: '#00e5a0',
+        isOwner: true,
+      };
+      set({ group: mapGroup(group), members: [ownerMember], activeLocks: [] });
+      showToast('Group created', 'success');
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? `Unable to create group: ${error.message}`
+          : 'Unable to create group',
+        'error'
+      );
+      throw error;
     }
   },
   addMember: async (email: string) => {

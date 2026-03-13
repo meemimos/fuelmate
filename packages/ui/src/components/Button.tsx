@@ -25,7 +25,7 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
 };
 
 const variantViewStyle: Record<ButtonVariant, ViewStyle> = {
-  primary: { backgroundColor: '#ffffff' },
+  primary: { backgroundColor: '#00e5a0' },
   secondary: { backgroundColor: '#1a1a1f', borderWidth: 1, borderColor: '#252530' },
   danger: { backgroundColor: '#dc2626' },
   ghost: { backgroundColor: '#1a1a1f', borderWidth: 1, borderColor: '#00e5a088' },
